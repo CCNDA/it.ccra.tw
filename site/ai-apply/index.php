@@ -19,14 +19,16 @@ function h($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 $err = []; $done = false;
 // 熊哥 10-04：「想用來做什麼」不要選項，直接用文字方塊寫使用計畫（存進 uses 欄，通知信沿用）
 // 熊哥 10-04：工具可選 Claude、ChatGPT、Codex（Codex 隨 ChatGPT 帳號一起開），可複選；名稱一律叫「AI 工具」不綁品牌
-$TOOLS = ['Claude' => '長文件分析、多份文件比對、交回檔案', 'ChatGPT' => '日常問答、圖片、語音對話', 'Codex' => '寫程式、改程式（隨 ChatGPT 帳號一起開）'];
-$v = ['name' => $who['name'], 'dept' => $who['dept'], 'tools' => [], 'plan' => '', 'why' => '', 'pii' => ''];
+// 熊哥 10-04 續：ChatGPT 與 Codex 是同一個帳號開設，合併為一項；目前還不能用，先顯示但不能選，用預告方式說明申請中（開放時把 false 改 true）
+$TOOLS = ['Claude' => ['長文件分析、多份文件比對、交回檔案', true], 'ChatGPT（含 Codex）' => ['日常問答、圖片、寫程式改程式。協會申請中，開放後會通知大家', false]];
+$OPEN = array_keys(array_filter($TOOLS, fn($t) => $t[1]));
+$v = ['name' => $who['name'], 'dept' => $who['dept'], 'tools' => count($OPEN) === 1 ? $OPEN : [], 'plan' => '', 'why' => '', 'pii' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($csrf, $_POST['csrf'] ?? '')) $err[] = '頁面已過期，請重新整理後再送出。';
     $v['name']  = trim($_POST['name'] ?? '');
     $v['dept']  = $_POST['dept'] ?? '';
-    $v['tools'] = array_values(array_intersect(array_keys($TOOLS), (array)($_POST['tools'] ?? [])));
+    $v['tools'] = array_values(array_intersect($OPEN, (array)($_POST['tools'] ?? [])));
     $v['plan']  = trim($_POST['plan'] ?? '');
     $v['why']   = trim($_POST['why'] ?? '');
     $v['pii']   = $_POST['pii'] ?? '';
@@ -63,6 +65,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 .ro{margin:0;color:var(--ink-2)}
 .tools .pill span{flex-direction:column;align-items:flex-start;gap:2px;border-radius:18px;padding:10px 16px}
 .tools .pill small{font-weight:500;font-size:13px;color:var(--muted)}
+.tools .pill.off span{cursor:not-allowed;opacity:.55;border-style:dashed}
+.tools .pill.off span:hover{transform:none}
+.tools .pill em{font-style:normal;font-size:11.5px;font-weight:700;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--mist);color:var(--teal-d)}
 </style>
 <script src="/assets/whoami.js?v=dev" defer></script>
 </head>
@@ -91,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php else: ?>
   <div class="box note">
     <p class="step"><b>1</b>申請前先確認</p>
-    <p style="margin:0">用公司帳號登入 <a href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener">M365 Copilot Chat</a>，逐字稿整理、摘要、文案初稿、翻譯、潤稿、影片腳本、生成圖片都已經可以做，<b>不需要申請</b>。<br>需要它交回檔案、一次比對多份文件、或長篇來回分析，或要寫程式，才需要申請 Claude、ChatGPT 或 Codex。</p>
+    <p style="margin:0">用公司帳號登入 <a href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener">M365 Copilot Chat</a>，逐字稿整理、摘要、文案初稿、翻譯、潤稿、影片腳本、生成圖片都已經可以做，<b>不需要申請</b>。<br>需要它交回檔案、一次比對多份文件、或長篇來回分析，才需要申請 Claude。</p>
   </div>
   <?php if ($err): ?><div class="box"><ul class="errs err"><?php foreach ($err as $e) echo '<li>' . h($e) . '</li>'; ?></ul></div><?php endif; ?>
   <form method="post">
@@ -110,10 +115,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </select>
     </div>
     <div class="box">
-      <p class="step"><b>3</b>想申請哪一個？（可複選）</p>
+      <p class="step"><b>3</b>想申請哪一個？</p>
       <div class="pills tools">
-        <?php foreach ($TOOLS as $t => $desc): ?>
-          <label class="pill"><input type="checkbox" name="tools[]" value="<?= h($t) ?>"<?= in_array($t, $v['tools'], true) ? ' checked' : '' ?>><span><b><?= h($t) ?></b><small><?= h($desc) ?></small></span></label>
+        <?php foreach ($TOOLS as $t => [$desc, $open]): ?>
+          <label class="pill<?= $open ? '' : ' off' ?>"><input type="checkbox" name="tools[]" value="<?= h($t) ?>"<?= in_array($t, $v['tools'], true) ? ' checked' : '' ?><?= $open ? '' : ' disabled' ?>><span><b><?= h($t) ?><?= $open ? '' : '<em>申請中・敬請期待</em>' ?></b><small><?= h($desc) ?></small></span></label>
         <?php endforeach; ?>
       </div>
       <label class="q" for="plan">使用計畫</label>
