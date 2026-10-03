@@ -25,7 +25,7 @@
     <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會">
     <span class="sep" aria-hidden="true"></span>
     <div class="title">資訊服務<small>IT Service Desk</small></div>
-    <span class="me"><img class="av" src="/img/itsu-avatar.webp" alt="">資訊部大蘇</span>
+    <span class="me">僅限協會 M365 帳號</span>
   </div>
 </header>
 
@@ -107,6 +107,37 @@ fetch('/cdn-cgi/access/get-identity').then(function (r) { return r.json(); }).th
   var n = (j.name || '').replace(/^\d{3}-/, '');
   if (n) document.getElementById('hi-name').textContent = n + '，';
 }).catch(function () {});
+</script>
+
+<!-- 互動大蘇：只在電腦版、右側空白處出現，不壓到內容（熊哥 10-03：要有互動感，手機版不用） -->
+<div class="itsu" aria-live="polite">
+  <div class="itsu-say" id="itsu-say" hidden></div>
+  <button class="itsu-btn" id="itsu-btn" type="button" aria-label="跟大蘇打招呼">
+    <img src="/img/itsu-wave.webp" alt="資訊部大蘇" width="383" height="600">
+  </button>
+</div>
+<script>
+(function () {
+  var btn = document.getElementById('itsu-btn'), say = document.getElementById('itsu-say'), i = -1, name = '';
+  var lines = [
+    function () { return (name ? name + '，' : '') + '平安！我是資訊部的大蘇。'; },
+    function () { return '要用 Claude？左邊第一張「AI 工具使用申請」，送出我就通知王主任。'; },
+    function () { return '電腦怪怪的？Teams 找我，附張截圖最快。'; },
+    function () { return '想找人聊聊或一起靈修？資訊部咖啡廳歡迎你。'; },
+    function () { return '網站有沒有掛掉，「主機狀況」一眼就知道。'; }
+  ];
+  btn.addEventListener('click', function () {
+    i = (i + 1) % lines.length;
+    say.textContent = lines[i]();
+    say.hidden = false;
+    btn.classList.remove('hop'); void btn.offsetWidth; btn.classList.add('hop');
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') say.hidden = true; });
+  fetch('/cdn-cgi/access/get-identity').then(function (r) { return r.json(); }).then(function (j) {
+    name = (j.name || '').replace(/^\d{3}-/, '');
+  }).catch(function () {});
+  setTimeout(function () { if (say.hidden && window.matchMedia('(min-width: 1360px)').matches) btn.click(); }, 400);
+})();
 </script>
 </body>
 </html>

@@ -121,3 +121,20 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 .hello b{color:var(--ink)}
 .uncle img.av{width:56px;height:56px;border-radius:50%;object-fit:cover;object-position:top;flex:none;background:color-mix(in srgb,var(--green) 18%,var(--panel));border:1.5px solid var(--edge)}
 @media (max-width:640px){.bar .me{font-size:0;gap:0}}
+
+/* ── 互動大蘇（電腦版右側空白處；<1240px 不顯示，不壓內容） ── */
+.itsu{display:none}
+@media (min-width:1360px){
+  .itsu{display:block;position:fixed;right:16px;bottom:18px;z-index:4;width:132px}
+  .itsu-btn{display:block;padding:0;border:0;background:none;cursor:pointer;width:132px}
+  .itsu-btn img{display:block;width:132px;height:auto;filter:drop-shadow(0 12px 18px rgba(13,26,51,.22));transform-origin:50% 100%;animation:sway 4s ease-in-out infinite}
+  .itsu-btn:hover img{animation-play-state:paused;transform:scale(1.04)}
+  .itsu-btn.hop img{animation:hop .5s cubic-bezier(.3,1.6,.5,1)}
+  .itsu-say{position:absolute;bottom:calc(100% + 8px);right:0;width:min(230px,calc((100vw - 960px)/2 - 40px));background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid var(--edge);border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.6;color:var(--ink);box-shadow:var(--glow)}
+  .itsu-say::after{content:"";position:absolute;right:48px;bottom:-7px;width:12px;height:12px;background:var(--panel);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);transform:rotate(45deg)}
+}
+@keyframes sway{0%,100%{transform:rotate(0)}50%{transform:rotate(-1.5deg)}}
+@keyframes hop{0%{transform:translateY(0)}40%{transform:translateY(-10px)}100%{transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.itsu-btn img,.itsu-btn.hop img{animation:none}}
+@media (min-width:1360px){.hello{display:none}}
