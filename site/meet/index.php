@@ -125,24 +125,25 @@ foreach ($slots ?? [] as $k => $days) foreach ($days as $d => $list) $data[$k][$
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css?v=dev">
 <style>
-:root{--pink:#ff8fab;--peach:#ffd6a5;--mint:#b9fbc0;--sky:#a0c4ff;--cream:#fffaf2}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--cream:#1b2440}}
-body{background-image:radial-gradient(600px 300px at 90% 0%,color-mix(in srgb,var(--pink) 22%,transparent),transparent 70%),radial-gradient(600px 320px at 0% 20%,color-mix(in srgb,var(--sky) 22%,transparent),transparent 70%),linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:auto,auto,28px 28px,28px 28px}
+/* 莫蘭迪藍綠（熊哥 10-03：要藍綠搭配、符合 CCNDA 配色，可愛但用莫蘭迪色系） */
+:root{--teal:#6f9a96;--teal-d:#557c79;--blue:#8aa3b6;--sage:#a9bfb3;--mist:#d9e4e1;--cream:#f3f6f5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--cream:#1d2a2e;--mist:#2a3a3d}}
+body{background-image:radial-gradient(600px 300px at 90% 0%,color-mix(in srgb,var(--sage) 30%,transparent),transparent 70%),radial-gradient(600px 320px at 0% 20%,color-mix(in srgb,var(--blue) 26%,transparent),transparent 70%),linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:auto,auto,28px 28px,28px 28px}
 .hero{display:flex;align-items:center;gap:16px;margin:22px 0 4px}
-.hero .pic{width:76px;height:76px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:38px;background:linear-gradient(135deg,var(--peach),var(--pink));border:3px solid #fff;box-shadow:0 8px 20px -10px rgba(255,120,150,.6);overflow:hidden;animation:bob 3s ease-in-out infinite}
+.hero .pic{width:76px;height:76px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:38px;background:linear-gradient(135deg,var(--sage),var(--blue));border:3px solid #fff;box-shadow:0 8px 20px -10px rgba(85,124,121,.6);overflow:hidden;animation:bob 3s ease-in-out infinite}
 .hero .pic img{width:100%;height:100%;object-fit:cover;object-position:top}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 .hero h1{margin:0;font-size:clamp(22px,4vw,28px);font-weight:900}
 .hero p{margin:4px 0 0;color:var(--ink-2);font-size:15px}
 .box{background:var(--panel);border:1px solid var(--edge);border-radius:24px;padding:18px;box-shadow:var(--glow);margin-top:16px}
 .step{display:flex;align-items:center;gap:8px;font-weight:800;margin:0 0 10px;font-size:16px}
-.step b{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--pink);color:#fff;font-size:13px}
+.step b{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--teal);color:#fff;font-size:13px}
 .pills{display:flex;flex-wrap:wrap;gap:10px}
 .pill{position:relative}
 .pill input{position:absolute;opacity:0;inset:0}
 .pill span{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;border:2px solid var(--edge);background:var(--cream);font-weight:800;cursor:pointer;transition:transform .15s}
 .pill span:hover{transform:translateY(-2px)}
-.pill input:checked+span{border-color:var(--pink);background:color-mix(in srgb,var(--pink) 22%,var(--cream))}
+.pill input:checked+span{border-color:var(--teal);background:var(--mist)}
 .pill input:focus-visible+span{outline:3px solid var(--focus);outline-offset:2px}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .cal-head strong{font-size:17px}
@@ -150,21 +151,21 @@ body{background-image:radial-gradient(600px 300px at 90% 0%,color-mix(in srgb,va
 .cal-head button:disabled{opacity:.3;cursor:default}
 .grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;max-width:460px}
 .grid7 .wd{font-size:12.5px;color:var(--muted);font-weight:700}
-.grid7 .wd.we{color:var(--pink)}
+.grid7 .wd.we{color:var(--blue)}
 .day{aspect-ratio:1;border-radius:14px;border:0;background:transparent;color:var(--muted);font:700 15px/1 "Noto Sans TC",sans-serif;opacity:.45}
 .day.on{opacity:1;color:var(--ink);background:var(--cream);cursor:pointer;position:relative}
-.day.on::after{content:"";position:absolute;left:50%;bottom:7px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--pink)}
-.day.on:hover{background:color-mix(in srgb,var(--mint) 45%,var(--cream))}
-.day.sel{background:var(--pink)!important;color:#fff}
+.day.on::after{content:"";position:absolute;left:50%;bottom:7px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--teal)}
+.day.on:hover{background:var(--mist)}
+.day.sel{background:var(--teal)!important;color:#fff}
 .day.sel::after{background:#fff}
 .times{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .times button{border:2px solid var(--edge);background:var(--cream);border-radius:12px;padding:8px 12px;font:500 14px/1 "IBM Plex Mono",monospace;cursor:pointer;color:var(--ink)}
-.times button.sel{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.times button.sel{background:var(--teal-d);color:#fff;border-color:var(--teal-d)}
 .hint{color:var(--muted);font-size:14px}
 label.q{display:block;font-weight:800;margin:14px 0 4px}
 input[type=text],textarea{width:100%;font:inherit;color:inherit;background:var(--cream);border:2px solid var(--edge);border-radius:14px;padding:10px 12px}
 textarea{min-height:80px}
-.go{margin-top:18px;border:0;border-radius:999px;padding:13px 26px;font:900 16px/1 "Noto Sans TC",sans-serif;color:#fff;background:linear-gradient(135deg,var(--pink),#ff6b8b);cursor:pointer;box-shadow:0 10px 22px -12px rgba(255,90,130,.8)}
+.go{margin-top:18px;border:0;border-radius:999px;padding:13px 26px;font:900 16px/1 "Noto Sans TC",sans-serif;color:#fff;background:linear-gradient(135deg,var(--teal),var(--blue));cursor:pointer;box-shadow:0 10px 22px -12px rgba(85,124,121,.8)}
 .go:disabled{opacity:.45;cursor:default;box-shadow:none}
 .err{color:var(--red);font-weight:800}
 .yay{text-align:center;padding:26px 18px}
@@ -209,7 +210,7 @@ textarea{min-height:80px}
       <p class="step"><b>2</b>挑一天、挑時間（每次 90 分鐘）</p>
       <div class="cal-head" style="max-width:460px"><button type="button" id="prev" aria-label="上個月">‹</button><strong id="mon"></strong><button type="button" id="next" aria-label="下個月">›</button></div>
       <div class="grid7" id="grid"></div>
-      <p class="hint" id="pickday">有粉紅點的日子可以約，點一下看時間。</p>
+      <p class="hint" id="pickday">有綠點的日子可以約，點一下看時間。</p>
       <div class="times" id="times"></div>
     </div>
     <div class="box">
@@ -277,7 +278,7 @@ textarea{min-height:80px}
   document.getElementById('next').onclick = function () { view.setMonth(view.getMonth() + 1); render(); };
   [].forEach.call(form.querySelectorAll('input[name=purpose]'), function (r) { r.addEventListener('change', function () {
     selDay = null; slotIn.value = ''; go.disabled = true; document.getElementById('times').innerHTML = '';
-    document.getElementById('pickday').textContent = '有粉紅點的日子可以約，點一下看時間。';
+    document.getElementById('pickday').textContent = '有綠點的日子可以約，點一下看時間。';
     setDefaultPlace(); render(); }); });
   [].forEach.call(form.querySelectorAll('input[name=place]'), function (r) { r.addEventListener('change', function () {
     document.getElementById('otherbox').hidden = r.value !== 'other'; }); });
