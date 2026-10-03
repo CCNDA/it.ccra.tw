@@ -125,25 +125,66 @@ fetch('/cdn-cgi/access/get-identity').then(function (r) { return r.json(); }).th
 
 <script>
 (function () {
-  var btn = document.getElementById('itsu-btn'), say = document.getElementById('itsu-say'), i = -1, name = '';
-  var lines = [
-    function () { return (name ? name + '，' : '') + '平安！我是資訊部的大蘇。'; },
-    function () { return '要用 Claude？左邊第一張「AI 工具使用申請」，送出我就通知王主任。'; },
-    function () { return '電腦怪怪的？Teams 找我，附張截圖最快。'; },
-    function () { return '想找人聊聊或一起靈修？資訊部咖啡廳歡迎你。'; },
-    function () { return '網站有沒有掛掉，「主機狀況」一眼就知道。'; }
+  // 大蘇台詞（熊哥 10-04：大蘇和我可以多一點內容，比較有趣）。第一句依時段問候，之後不重複地輪播。
+  var btn = document.getElementById('itsu-btn'), say = document.getElementById('itsu-say'), name = '', used = [], lastClick = 0;
+  function hello() {
+    var h = new Date().getHours(), d = new Date().getDay(), n = name ? name + '，' : '';
+    if (d === 0 || d === 6) return n + '週末還來看資訊服務？你比主任還認真 😆';
+    if (h < 9) return n + '早安！這麼早，咖啡喝了嗎？☕';
+    if (h < 12) return n + '早安！今天也請多指教，我是資訊部的大蘇。';
+    if (h < 14) return n + '午安！吃飽了嗎？吃飽才有力氣跟電腦奮鬥 🍱';
+    if (h < 18) return n + '午安！下午容易想睡，起來動一動再回來～';
+    return n + '這麼晚還在？忙完早點回家休息喔 🌙';
+  }
+  var POOL = [
+    // 功能導覽
+    '要用 Claude？左邊第一張「AI 工具使用申請」，送出我就通知王主任。',
+    '電腦怪怪的？Teams 找我，附張截圖最快，我看圖說故事很厲害。',
+    '想找人聊聊或一起靈修？資訊部咖啡廳歡迎你，已加入的點了直接進去。',
+    '網站有沒有掛掉，「主機狀況」一眼就知道，綠的就是好消息。',
+    '想約主任？「與資訊部主任有約」可以請他吃大餐，他不會拒絕的 🤫',
+    '每天早上 Claude AI 交流有一則新手教學，照著做就會。',
+    '資訊安全小常識每天一則，十秒鐘就能多一分安心。',
+    // 資安小提醒
+    '收到「帳號異常，請立即點連結」的信？先別點，轉給我看看 🎣',
+    '密碼不要寫在便利貼貼在螢幕上，我會假裝沒看到，但壞人不會。',
+    '離開座位記得 Win + L 鎖螢幕，三秒鐘的好習慣 🔒',
+    '開啟多重驗證（MFA）之後，就算密碼外洩，壞人也進不來。',
+    // 資訊部日常
+    '電腦重開機，可以解決 87% 的問題；剩下 13% 找我。',
+    '王主任今天又在開會了，所以我來接待你 😎',
+    '資訊部的人都很安靜，因為我們在聽伺服器唱歌 🎶',
+    '我不用休息，但你要記得喝水、伸懶腰 💧',
+    '「我什麼都沒動，它就壞了」——這句話我聽過一千次了，沒關係，我相信你。',
+    '印表機卡紙不是你的錯，是它的個性問題 🖨️',
+    '當你感覺不到資訊部的存在，表示一切都很好——今天也很好。'
   ];
-  btn.addEventListener('click', function () {
-    i = (i + 1) % lines.length;
-    say.textContent = lines[i]();
-    say.hidden = false;
+  function next() {
+    if (used.length >= POOL.length) used = [];
+    var k; do { k = Math.floor(Math.random() * POOL.length); } while (used.indexOf(k) >= 0);
+    used.push(k); return POOL[k];
+  }
+  function talk(t) {
+    say.textContent = t; say.hidden = false;
     btn.classList.remove('hop'); void btn.offsetWidth; btn.classList.add('hop');
-  });
+  }
+  btn.addEventListener('click', function () { lastClick = Date.now(); talk(next()); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') say.hidden = true; });
+  // 滑到某張卡片上，大蘇也會順口介紹一下
+  var CARD = { '/ai-apply/': '這張是 AI 申請，填完我就通知王主任審核 👍', '/meet/': '約主任？記得，能者過勞，請謹慎邀約 😉',
+               '/status/': '想知道哪個網站在鬧脾氣，看這裡就對了。', '/cafe-join/': '咖啡廳不賣咖啡，但有人陪你聊、陪你禱告 ☕' };
+  [].forEach.call(document.querySelectorAll('a.card'), function (a) {
+    var t = CARD[a.getAttribute('href')]; if (t) a.addEventListener('mouseenter', function () { if (window.matchMedia('(min-width: 1360px)').matches) talk(t); });
+  });
   fetch('/cdn-cgi/access/get-identity').then(function (r) { return r.json(); }).then(function (j) {
     name = (j.name || '').replace(/^\d{3}-/, '');
-  }).catch(function () {});
-  setTimeout(function () { if (say.hidden && window.matchMedia('(min-width: 1360px)').matches) btn.click(); }, 400);
+  }).catch(function () {}).then(function () {
+    if (window.matchMedia('(min-width: 1360px)').matches) talk(hello());
+  });
+  // 沒人理他的時候，大蘇每 35 秒自己說一句
+  setInterval(function () {
+    if (document.visibilityState === 'visible' && Date.now() - lastClick > 20000 && window.matchMedia('(min-width: 1360px)').matches) talk(next());
+  }, 35000);
 })();
 </script>
 </body>

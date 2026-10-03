@@ -314,25 +314,53 @@ textarea{min-height:80px}
 
   // ── 互動熊哥（熊哥 10-04：叫得出登入者名字、各邀約項目的趣味、不時提醒好忙好累能者過勞） ──
   var NAME = <?= json_encode(preg_replace('/^\d{3}-/', '', (string)$who['name']), JSON_UNESCAPED_UNICODE) ?>;
-  var say = document.getElementById('bear-say'), bb = document.getElementById('bear-btn');
+  // 熊哥 10-04 追加：「大蘇和我，可不可以有多一點內容，這樣比較有趣」→ 每一步都有回應，且同一池不連續重複
+  var say = document.getElementById('bear-say'), bb = document.getElementById('bear-btn'), lastAct = Date.now();
   var BY = {
-    talk: ['要討論什麼？先說好，討論完我大概又要加班了⋯', '有事好商量，帶著問題來，我們一起想辦法 💬'],
-    meal: ['請吃大餐？這個我可以！先說，我吃很多喔 🍱', '大餐比會議有效率，我認真的 🍖'],
-    tea:  ['下午茶是能者唯一的充電時間 ☕', '蛋糕可以，加班不行 🍰'],
-    play: ['出去玩？行事曆說不行，但我的心說可以！🎈', '帶我出門曬曬太陽，資訊部的人都缺光合作用 ☀️'],
-    game: ['打電動？先說好，輸了不准哭 🎮', '我的反應比 Wi‑Fi 還快，信不信？'],
-    date: ['安排相親⋯⋯咳咳，我會準時出席的 😳', '相親也要看時段，請挑綠點的日子 💞']
+    talk: ['要討論什麼？先說好，討論完我大概又要加班了⋯', '有事好商量，帶著問題來，我們一起想辦法 💬',
+           '討論可以，簡報請控制在 87 頁以內 📊', '先把問題寫下來，我們就成功一半了 ✍️', '需求要講清楚喔，不然我會用工程師的方式理解 🤖'],
+    meal: ['請吃大餐？這個我可以！先說，我吃很多喔 🍱', '大餐比會議有效率，我認真的 🍖', '吃飯皇帝大，討論可以邊吃邊聊 🍜',
+           '我不挑食，但是貴的我會比較感動 💸', '帶我去吃好吃的，我會記住你一輩子（至少一個禮拜）'],
+    tea:  ['下午茶是能者唯一的充電時間 ☕', '蛋糕可以，加班不行 🍰', '珍奶半糖少冰，謝謝 🧋',
+           '三點半，是讓腦袋重開機的時間 🔄', '下午茶配八卦，是辦公室生存之道 🤫'],
+    play: ['出去玩？行事曆說不行，但我的心說可以！🎈', '帶我出門曬曬太陽，資訊部的人都缺光合作用 ☀️', '走路可以，爬山請先讓我暖身 🥾',
+           '去沒有 Wi‑Fi 的地方也可以，我會努力適應 📵', '拍照記得把我拍瘦一點 📸'],
+    game: ['打電動？先說好，輸了不准哭 🎮', '我的反應比 Wi‑Fi 還快，信不信？', '單挑還是組隊？我都奉陪 🕹️',
+           '我開大絕的時候請不要跟我說話 ⚡', '輸贏不重要，重要的是我贏 😎'],
+    date: ['安排相親⋯⋯咳咳，我會準時出席的 😳', '相親也要看時段，請挑綠點的日子 💞', '我需要先去剪頭髮嗎？💇',
+           '這個⋯⋯要不要先讓大蘇幫我看一下行事曆 😅', '介紹人請附上推薦理由，我會認真閱讀 📄']
   };
-  var TIRED = ['好忙好累，都不用休息⋯能者過勞啊！', '我的行事曆比台北捷運還擠 🚇', '休息？那是什麼，可以吃嗎？', '每一個空檔都很珍貴，請好好珍惜 🙏'];
-  function talk(t) { say.textContent = t; say.hidden = false; bb.classList.remove('hop'); void bb.offsetWidth; bb.classList.add('hop'); }
-  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  var DAY_WEEK = ['這天呀，我看看⋯可以！', '好，這天先幫你留著 👍', '這天還有空，算你運氣好！', '平日的我比較正經，請多包涵 🧐'];
+  var DAY_WEEKEND = ['週末也要約？好吧，誰叫你是你 🥹', '週末陪你，是我給你的特別待遇 ✨', '週末出門，記得幫我挑個不用排隊的地方'];
+  var AT = { morning: ['早上的我比較清醒，好選擇 ☀️', '一早就約，你是認真的！'], noon: ['中午時段，順便吃個飯？🍱', '午餐時間開會，肚子會抗議喔'],
+             afternoon: ['下午時段，記得帶點心來 🍪', '下午三點，正是腦袋需要糖分的時候'], evening: ['晚上了還約我，看來是真愛 🌙', '傍晚時段，聊完剛好下班（希望啦）'] };
+  var PLACE = { teams: '線上也好，我可以穿拖鞋開會 🩴', office: '來台北辦公室，順便幫你看看電腦 🖥️',
+                ccnda: 'CCNDA 辦公室見！記得跟大家打招呼 👋', other: '去哪裡都好，地點寫清楚，我怕迷路 🗺️' };
+  var TIRED = ['好忙好累，都不用休息⋯能者過勞啊！', '我的行事曆比台北捷運還擠 🚇', '休息？那是什麼，可以吃嗎？',
+               '每一個空檔都很珍貴，請好好珍惜 🙏', '大蘇說我要多休息，但大蘇自己從來不睡 🤖', '一天要是有 48 小時就好了⋯不對，那我會開 48 小時的會',
+               '我的咖啡因濃度比血液還高 ☕', '有綠點就約，沒綠點就⋯再看看下個月吧 📅', '謝謝你願意花時間跟我見面，真心的 🙏'];
+  var last = {};
+  function pick(a, tag) {
+    var k; do { k = Math.floor(Math.random() * a.length); } while (a.length > 1 && k === last[tag]);
+    last[tag] = k; return a[k];
+  }
+  function talk(t) { lastAct = Date.now(); say.textContent = t; say.hidden = false; bb.classList.remove('hop'); void bb.offsetWidth; bb.classList.add('hop'); }
   talk('有綠點的日子都可以約，先挑想做什麼吧～');
-  [].forEach.call(form.querySelectorAll('input[name=purpose]'), function (r) { r.addEventListener('change', function () { talk(pick(BY[r.value] || TIRED)); }); });
+  [].forEach.call(form.querySelectorAll('input[name=purpose]'), function (r) { r.addEventListener('change', function () { talk(pick(BY[r.value] || TIRED, r.value)); }); });
   document.getElementById('grid').addEventListener('click', function (e) {
-    if (e.target.classList && e.target.classList.contains('on')) talk(pick(['這天呀，我看看⋯可以！', '好，這天先幫你留著 👍', '這天還有空，算你運氣好！']));
+    var b = e.target; if (!(b.classList && b.classList.contains('on'))) return;
+    var dow = new Date(view.getFullYear(), view.getMonth(), +b.textContent).getDay();
+    talk(dow === 0 || dow === 6 ? pick(DAY_WEEKEND, 'we') : pick(DAY_WEEK, 'wd'));
   });
-  bb.addEventListener('click', function () { talk(pick(TIRED)); });
-  setInterval(function () { if (document.visibilityState === 'visible') talk(pick(TIRED)); }, 25000);
+  document.getElementById('times').addEventListener('click', function (e) {
+    if (e.target.tagName !== 'BUTTON') return;
+    var hh = +e.target.textContent.slice(0, 2), slot = hh < 11 ? 'morning' : hh < 14 ? 'noon' : hh < 17 ? 'afternoon' : 'evening';
+    talk(pick(AT[slot], slot));
+  });
+  [].forEach.call(form.querySelectorAll('input[name=place]'), function (r) { r.addEventListener('change', function () { if (PLACE[r.value]) talk(PLACE[r.value]); }); });
+  form.addEventListener('submit', function () { talk('送出了！我去行事曆幫你卡位 🏃'); });
+  bb.addEventListener('click', function () { talk(pick(TIRED, 'tired')); });
+  setInterval(function () { if (document.visibilityState === 'visible' && Date.now() - lastAct > 20000) talk(pick(TIRED, 'tired')); }, 25000);
 })();
 </script>
 <?php endif; ?>
