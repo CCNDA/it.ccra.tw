@@ -9,7 +9,9 @@ $email = strtolower($id['email']);
 $who = (json_decode((string)@file_get_contents(STATE_DIR . '/dept_map.json'), true) ?: [])[$email] ?? ['name' => '', 'dept' => ''];
 
 const OWNER = 'black@ccra.org.tw';
-const SLOT_MIN = 30;                       // 每次 30 分鐘
+const SLOT_MIN = 90;                       // 每次約 90 分鐘（熊哥 10-03）
+const REST_MIN = 30;                       // 每個行程結束後留 30 分鐘休息（熊哥 10-03）
+const STEP_MIN = 30;                       // 開始時間每 30 分鐘一格
 const DAYS_AHEAD = 14;                     // 可約兩週內
 const LEAD_HOURS = 3;                      // 至少提前 3 小時
 const WINDOWS = [['09:30', '12:00'], ['13:30', '17:30']];   // 週一到週五
@@ -42,10 +44,11 @@ function free_slots($tz) {
         if ((int)$d->format('N') >= 6) continue;
         foreach (WINDOWS as [$a, $b]) {
             $s = strtotime($d->format('Y-m-d ') . $a . ' Asia/Taipei'); $end = strtotime($d->format('Y-m-d ') . $b . ' Asia/Taipei');
-            for (; $s + SLOT_MIN * 60 <= $end; $s += SLOT_MIN * 60) {
+            for (; $s + SLOT_MIN * 60 <= $end; $s += STEP_MIN * 60) {
                 if ($s < $now + LEAD_HOURS * 3600) continue;
                 $e = $s + SLOT_MIN * 60; $ok = true;
-                foreach ($busy as [$bs, $be]) if ($s < $be && $e > $bs) { $ok = false; break; }
+                // 衝突：開始時間落在別的行程＋休息內，或這次會議＋休息蓋到別的行程
+                foreach ($busy as [$bs, $be]) if ($s < $be + REST_MIN * 60 && $e + REST_MIN * 60 > $bs) { $ok = false; break; }
                 if ($ok) $days[$d->format('Y-m-d')][] = $s;
             }
         }
@@ -137,7 +140,7 @@ textarea{min-height:80px}
 <main class="wrap">
   <div class="meet-head">
     <div class="pic"><?php if (is_file('/var/www/it.ccra.tw/img/black-avatar.webp')): ?><img src="/img/black-avatar.webp" alt=""><?php else: ?>王<?php endif; ?></div>
-    <div><h1>王獻宗 主任</h1><p>資訊部｜選一個時段，送出後會直接收到會議邀請（每次 30 分鐘）</p></div>
+    <div><h1>王獻宗 主任</h1><p>資訊部｜選一個時段，送出後會直接收到會議邀請（每次 90 分鐘）</p></div>
   </div>
 <?php if ($done !== null): ?>
   <div class="panel">
