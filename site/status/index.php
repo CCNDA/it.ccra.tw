@@ -1,0 +1,114 @@
+<?php
+// 主機狀況儀表板：讀 UptimeRobot API（唯讀金鑰，只在主機端使用，不送到瀏覽器）。
+// 金鑰放 /var/lib/it-ccra/uptimerobot-readonly.key（網站根目錄外、www-data 640），不進 GitHub。
+// API 結果快取 60 秒，避免每次開頁都打 UptimeRobot（免費方案有呼叫頻率限制）。
+require '/var/www/it-lib/access.php';
+access_identity();
+
+function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
+$cache = STATE_DIR . '/uptime_cache.json';
+$data = null; $err = '';
+if (is_file($cache) && time() - filemtime($cache) < 60) {
+    $data = json_decode(file_get_contents($cache), true);
+} else {
+    $key = trim((string)@file_get_contents(STATE_DIR . '/uptimerobot-readonly.key'));
+    $body = http_build_query(['api_key' => $key, 'format' => 'json', 'custom_uptime_ratios' => '1-7-30',
+        'response_times' => 1, 'response_times_average' => 30, 'response_times_limit' => 48, 'logs' => 1, 'logs_limit' => 5]);
+    $ctx = stream_context_create(['http' => ['method' => 'POST', 'timeout' => 15, 'content' => $body,
+        'header' => "Content-Type: application/x-www-form-urlencoded\r\nCache-Control: no-cache\r\nUser-Agent: it.ccra.tw-status\r\n"]]);
+    $raw = @file_get_contents('https://api.uptimerobot.com/v2/getMonitors', false, $ctx);
+    $j = $raw ? json_decode($raw, true) : null;
+    if ($j && ($j['stat'] ?? '') === 'ok') {
+        $data = ['at' => time(), 'monitors' => $j['monitors']];
+        file_put_contents($cache, json_encode($data, JSON_UNESCAPED_UNICODE));
+    } elseif (is_file($cache)) {
+        $data = json_decode(file_get_contents($cache), true);
+        $err = '暫時讀不到 UptimeRobot，以下為上次取得的資料。';
+    } else {
+        $err = '讀不到 UptimeRobot，請稍後再試。';
+    }
+}
+$mons = $data['monitors'] ?? [];
+// 狀態排序：異常在前
+$rank = [9 => 0, 8 => 1, 1 => 2, 2 => 3, 0 => 4];
+usort($mons, fn($a, $b) => [$rank[$a['status']] ?? 5, $a['friendly_name']] <=> [$rank[$b['status']] ?? 5, $b['friendly_name']]);
+$label = [0 => '暫停', 1 => '尚未檢查', 2 => '正常', 8 => '疑似中斷', 9 => '中斷'];
+$cls = [0 => 'paused', 1 => 'paused', 2 => 'up', 8 => 'warn', 9 => 'down'];
+$count = ['up' => 0, 'down' => 0, 'paused' => 0];
+foreach ($mons as $m) {
+    $c = $cls[$m['status']] ?? 'paused';
+    $count[$c === 'warn' ? 'down' : $c]++;
+}
+?>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="120">
+<title>主機狀況｜CCRA 資訊服務</title>
+<link rel="icon" href="/img/logo.png">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+.sum{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0 6px}
+.sum div{flex:1 1 140px;background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:14px 16px;box-shadow:var(--glow)}
+.sum b{display:block;font-size:30px;font-weight:900;line-height:1.1}
+.sum span{color:var(--muted);font-size:14px}
+.sum .up b{color:var(--green)} .sum .down b{color:var(--red)} .sum .paused b{color:var(--muted)}
+.meta{color:var(--muted);font-size:13px;font-family:"IBM Plex Mono",ui-monospace,monospace;margin:4px 0 16px}
+.err{color:var(--red);font-weight:700}
+.list{display:grid;gap:10px;grid-template-columns:1fr}
+@media (min-width:820px){.list{grid-template-columns:1fr 1fr}}
+.mon{background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center}
+.dot{width:12px;height:12px;border-radius:50%;grid-row:span 2}
+.up .dot{background:var(--green);box-shadow:0 0 0 4px color-mix(in srgb,var(--green) 20%,transparent)}
+.down .dot,.warn .dot{background:var(--red);box-shadow:0 0 0 4px color-mix(in srgb,var(--red) 25%,transparent)}
+.paused .dot{background:var(--muted)}
+.mon.down,.mon.warn{border-color:color-mix(in srgb,var(--red) 50%,transparent)}
+.name{font-weight:800;overflow-wrap:anywhere}
+.st{font-size:13px;font-weight:700;text-align:right}
+.up .st{color:var(--green)} .down .st,.warn .st{color:var(--red)} .paused .st{color:var(--muted)}
+.nums{grid-column:2 / 4;color:var(--muted);font:500 12.5px/1.5 "IBM Plex Mono",ui-monospace,monospace;display:flex;flex-wrap:wrap;gap:4px 14px}
+.nums em{font-style:normal;color:var(--ink-2)}
+</style>
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <a href="/"><img class="mark" src="/img/logo.png" alt="CCRA 資訊服務首頁"></a>
+  <div class="title">主機狀況<small>Uptime</small></div>
+</div></header>
+<main class="wrap">
+  <div class="sum">
+    <div class="up"><b><?= $count['up'] ?></b><span>正常</span></div>
+    <div class="down"><b><?= $count['down'] ?></b><span>中斷／疑似中斷</span></div>
+    <div class="paused"><b><?= $count['paused'] ?></b><span>暫停監測</span></div>
+  </div>
+  <p class="meta">資料來源 UptimeRobot（探測點在美國）・更新於 <?= $data ? date('Y-m-d H:i:s', $data['at']) : '—' ?>・頁面每 2 分鐘自動重新整理</p>
+  <?php if ($err): ?><p class="err"><?= h($err) ?></p><?php endif; ?>
+  <div class="list">
+  <?php foreach ($mons as $m):
+      $c = $cls[$m['status']] ?? 'paused';
+      [$d1, $d7, $d30] = array_pad(explode('-', $m['custom_uptime_ratio'] ?? ''), 3, '');
+      $avg = isset($m['average_response_time']) ? round((float)$m['average_response_time']) . ' ms' : '—';
+      $lastDown = '';
+      foreach ($m['logs'] ?? [] as $l) if (($l['type'] ?? 0) == 1) { $lastDown = date('m/d H:i', $l['datetime']) . '（' . round(($l['duration'] ?? 0) / 60) . ' 分）'; break; }
+  ?>
+    <div class="mon <?= $c ?>">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="name"><?= h($m['friendly_name']) ?></span>
+      <span class="st"><?= h($label[$m['status']] ?? '未知') ?></span>
+      <span class="nums">
+        <span>24h <em><?= h($d1 === '' ? '—' : rtrim(rtrim($d1, '0'), '.') . '%') ?></em></span>
+        <span>7d <em><?= h($d7 === '' ? '—' : rtrim(rtrim($d7, '0'), '.') . '%') ?></em></span>
+        <span>30d <em><?= h($d30 === '' ? '—' : rtrim(rtrim($d30, '0'), '.') . '%') ?></em></span>
+        <span>回應 <em><?= h($avg) ?></em></span>
+        <?php if ($lastDown): ?><span>上次中斷 <em><?= h($lastDown) ?></em></span><?php endif; ?>
+      </span>
+    </div>
+  <?php endforeach; ?>
+  </div>
+</main>
+</body>
+</html>
