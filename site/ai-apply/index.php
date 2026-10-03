@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
   <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
   <span class="sep" aria-hidden="true"></span>
-  <div class="title">AI 工具使用申請<small>Apply for Claude</small></div>
+  <div class="title">AI 工具使用申請<small>Apply for AI tools</small></div>
 </div></header>
 <main class="wrap">
   <div class="hero">
