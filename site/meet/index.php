@@ -22,7 +22,7 @@ const PURPOSES = [
     'tea'  => ['請下午茶', '🍰', [['14:30', '17:00']], 'other'],
     'play' => ['約出去玩', '🎈', [['09:30', '19:30']], 'other'],
 ];
-$PLACES = ['teams' => 'Teams 線上', 'office' => '到辦公室', 'other' => '其他地方'];
+$PLACES = ['teams' => 'Teams 線上', 'office' => '台北辦公室', 'ccnda' => 'CCNDA 辦公室', 'other' => '其他地方'];   // 熊哥 10-03
 
 function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 $secret = trim((string)@file_get_contents(STATE_DIR . '/form_secret'));
@@ -149,10 +149,10 @@ body{background-image:radial-gradient(600px 300px at 90% 0%,color-mix(in srgb,va
 .cal-head strong{font-size:17px}
 .cal-head button{border:0;background:var(--cream);border-radius:12px;width:38px;height:38px;font-size:18px;cursor:pointer;color:var(--ink)}
 .cal-head button:disabled{opacity:.3;cursor:default}
-.grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;max-width:460px}
+.grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;text-align:center}
 .grid7 .wd{font-size:12.5px;color:var(--muted);font-weight:700}
 .grid7 .wd.we{color:var(--blue)}
-.day{aspect-ratio:1;border-radius:14px;border:0;background:transparent;color:var(--muted);font:700 15px/1 "Noto Sans TC",sans-serif;opacity:.45}
+.day{height:clamp(44px,8vw,64px);border-radius:14px;border:0;background:transparent;color:var(--muted);font:700 15px/1 "Noto Sans TC",sans-serif;opacity:.45}
 .day.on{opacity:1;color:var(--ink);background:var(--cream);cursor:pointer;position:relative}
 .day.on::after{content:"";position:absolute;left:50%;bottom:7px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--teal)}
 .day.on:hover{background:var(--mist)}
@@ -208,7 +208,7 @@ textarea{min-height:80px}
     </div>
     <div class="box">
       <p class="step"><b>2</b>挑一天、挑時間（每次 90 分鐘）</p>
-      <div class="cal-head" style="max-width:460px"><button type="button" id="prev" aria-label="上個月">‹</button><strong id="mon"></strong><button type="button" id="next" aria-label="下個月">›</button></div>
+      <div class="cal-head"><button type="button" id="prev" aria-label="上個月">‹</button><strong id="mon"></strong><button type="button" id="next" aria-label="下個月">›</button></div>
       <div class="grid7" id="grid"></div>
       <p class="hint" id="pickday">有綠點的日子可以約，點一下看時間。</p>
       <div class="times" id="times"></div>
