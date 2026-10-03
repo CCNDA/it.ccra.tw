@@ -7,6 +7,11 @@ $id = access_identity();
 $email = strtolower($id['email']);
 $who = (json_decode((string)@file_get_contents(STATE_DIR . '/dept_map.json'), true) ?: [])[$email] ?? ['name' => '', 'dept' => ''];
 
+// 已經在咖啡廳的人直接轉進 Teams 頻道（成員名單由資訊部每小時同步：直接成員＋被分享進來的團隊成員）
+$CAFE_URL = 'https://teams.microsoft.com/l/channel/19%3Ad89qZSRpKulhxvxuxwkbfOfegBorZoSonLbWByZUorg1%40thread.tacv2/%E8%B3%87%E8%A8%8A%E9%83%A8%E5%92%96%E5%95%A1%E5%BB%B3?groupId=6e959ba3-f668-49e1-8dcc-e97df5fbfc6d&tenantId=a18de7ab-5b49-41ac-8831-357e9b0d5817';
+$members = json_decode((string)@file_get_contents(STATE_DIR . '/cafe_members.json'), true) ?: [];
+if (in_array($email, $members, true)) { header('Location: ' . $CAFE_URL, true, 302); exit; }
+
 $secret = trim((string)@file_get_contents(STATE_DIR . '/form_secret'));
 $csrf = hash_hmac('sha256', 'cafe' . $email . date('Y-m-d'), $secret);
 function h($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
