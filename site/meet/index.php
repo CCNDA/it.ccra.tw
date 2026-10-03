@@ -171,6 +171,21 @@ textarea{min-height:80px}
 .go:disabled{opacity:.45;cursor:default;box-shadow:none}
 .err{color:var(--red);font-weight:800}
 .yay{text-align:center;padding:26px 18px}
+.bear{display:none}
+@media (min-width:1360px){
+  .calbox{position:relative}
+  .bear{display:block;position:absolute;left:calc(100% + 18px);bottom:0;width:150px;z-index:3}
+  .bear-btn{display:block;border:0;background:none;padding:0;cursor:pointer;width:150px}
+  .bear-btn img.full{width:150px;height:auto;filter:drop-shadow(0 12px 18px rgba(13,26,51,.2))}
+  .bear-btn img.head{width:110px;height:110px;border-radius:50%;object-fit:cover;object-position:top;background:linear-gradient(135deg,var(--sage),var(--blue));border:3px solid #fff;box-shadow:var(--glow);margin-left:20px}
+  .bear-btn img{transform-origin:50% 100%;animation:sway 4s ease-in-out infinite}
+  .bear-btn.hop img{animation:hop .5s cubic-bezier(.3,1.6,.5,1)}
+  .bear-say{position:absolute;bottom:calc(100% + 10px);left:0;width:min(240px,calc((100vw - 960px)/2 - 40px));background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:10px 12px;font-size:14px;line-height:1.6;box-shadow:var(--glow)}
+  .bear-say::after{content:"";position:absolute;left:48px;bottom:-7px;width:12px;height:12px;background:var(--panel);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);transform:rotate(45deg)}
+}
+@keyframes sway{0%,100%{transform:rotate(0)}50%{transform:rotate(-1.5deg)}}
+@keyframes hop{0%{transform:translateY(0)}40%{transform:translateY(-10px)}100%{transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.bear-btn img,.bear-btn.hop img{animation:none}}
 .yay .big{font-size:46px;animation:bob 2s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.hero .pic,.yay .big{animation:none}}
 </style>
@@ -208,7 +223,14 @@ textarea{min-height:80px}
         <?php endforeach; ?>
       </div>
     </div>
-    <div class="box">
+    <div class="box calbox">
+      <!-- 互動熊哥：只在電腦版、行事曆右側出現（熊哥 10-04） -->
+      <div class="bear" aria-live="polite">
+        <div class="bear-say" id="bear-say" hidden></div>
+        <button type="button" class="bear-btn" id="bear-btn" aria-label="跟熊哥說話">
+          <img src="/img/<?= is_file('/var/www/it.ccra.tw/img/black-fullbody.webp') ? 'black-fullbody.webp' : 'black-avatar.webp' ?>" alt="王主任" class="<?= is_file('/var/www/it.ccra.tw/img/black-fullbody.webp') ? 'full' : 'head' ?>">
+        </button>
+      </div>
       <p class="step"><b>2</b>挑一天、挑時間（每次 90 分鐘）</p>
       <div class="cal-head"><button type="button" id="prev" aria-label="上個月">‹</button><strong id="mon"></strong><button type="button" id="next" aria-label="下個月">›</button></div>
       <div class="grid7" id="grid"></div>
@@ -286,6 +308,28 @@ textarea{min-height:80px}
     document.getElementById('otherbox').hidden = r.value !== 'other'; }); });
   if (!form.querySelector('input[name=place]:checked')) setDefaultPlace();
   render();
+
+  // ── 互動熊哥（熊哥 10-04：叫得出登入者名字、各邀約項目的趣味、不時提醒好忙好累能者過勞） ──
+  var NAME = <?= json_encode(preg_replace('/^\d{3}-/', '', (string)$who['name']), JSON_UNESCAPED_UNICODE) ?>;
+  var say = document.getElementById('bear-say'), bb = document.getElementById('bear-btn');
+  var BY = {
+    talk: ['要討論什麼？先說好，討論完我大概又要加班了⋯', '有事好商量，帶著問題來，我們一起想辦法 💬'],
+    meal: ['請吃大餐？這個我可以！先說，我吃很多喔 🍱', '大餐比會議有效率，我認真的 🍖'],
+    tea:  ['下午茶是能者唯一的充電時間 ☕', '蛋糕可以，加班不行 🍰'],
+    play: ['出去玩？行事曆說不行，但我的心說可以！🎈', '帶我出門曬曬太陽，資訊部的人都缺光合作用 ☀️'],
+    game: ['打電動？先說好，輸了不准哭 🎮', '我的反應比 Wi‑Fi 還快，信不信？'],
+    date: ['安排相親⋯⋯咳咳，我會準時出席的 😳', '相親也要看時段，請挑綠點的日子 💞']
+  };
+  var TIRED = ['好忙好累，都不用休息⋯能者過勞啊！', '我的行事曆比台北捷運還擠 🚇', '休息？那是什麼，可以吃嗎？', '每一個空檔都很珍貴，請好好珍惜 🙏'];
+  function talk(t) { say.textContent = t; say.hidden = false; bb.classList.remove('hop'); void bb.offsetWidth; bb.classList.add('hop'); }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  talk((NAME ? NAME + '，' : '') + '平安！想約我做什麼呀？');
+  [].forEach.call(form.querySelectorAll('input[name=purpose]'), function (r) { r.addEventListener('change', function () { talk(pick(BY[r.value] || TIRED)); }); });
+  document.getElementById('grid').addEventListener('click', function (e) {
+    if (e.target.classList && e.target.classList.contains('on')) talk(pick(['這天呀，我看看⋯可以！', '好，這天先幫你留著 👍', '這天還有空，算你運氣好！']));
+  });
+  bb.addEventListener('click', function () { talk(pick(TIRED)); });
+  setInterval(function () { if (document.visibilityState === 'visible') talk(pick(TIRED)); }, 25000);
 })();
 </script>
 <?php endif; ?>
