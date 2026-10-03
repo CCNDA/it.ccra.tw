@@ -163,11 +163,14 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 .motto span{display:inline-block}
 @media (max-width:640px){.motto{font-size:16px;line-height:1.9}}
 
-/* M365 Copilot 小按鈕（熊哥 10-04：簡化，放兩欄右上） */
-.hello-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 16px}
-.hello-row .hello{margin:0}
-a.copilot{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;border:1px solid var(--edge);background:var(--panel);color:var(--ink);font-weight:800;font-size:14px;text-decoration:none;white-space:nowrap;box-shadow:var(--glow);transition:border-color .15s,transform .15s}
-a.copilot svg{width:16px;height:16px;color:var(--green)}
-a.copilot:hover{border-color:var(--green);transform:translateY(-1px)}
-a.copilot:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){a.copilot{transition:none}}
+/* M365 快捷列（熊哥 10-04：每天更新上方，重要但容易被忽視的 M365 工具） */
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.quick-tip{margin:8px 2px 22px;font-size:13px;color:var(--muted)}
+.quick-tip a{color:var(--ink-2);font-weight:700}
+.quick a{display:flex;align-items:center;gap:7px;padding:9px 11px;border-radius:12px;border:1px solid var(--edge);background:var(--panel);color:var(--ink);font-weight:800;font-size:14px;text-decoration:none;box-shadow:var(--glow);transition:border-color .15s,transform .15s;min-width:0}
+.quick a span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quick svg{width:17px;height:17px;flex:none;color:var(--green)}
+.quick a:hover{border-color:var(--green);transform:translateY(-1px)}
+.quick a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+@media (max-width:420px){.quick{grid-template-columns:repeat(2,1fr)}}
+@media (prefers-reduced-motion:reduce){.quick a{transition:none}}

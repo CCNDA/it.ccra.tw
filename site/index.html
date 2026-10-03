@@ -37,11 +37,7 @@
     <circle class="pulse" cx="422" cy="2" r="3"/>
   </svg>
 
-  <div class="hello-row">
-    <p class="hello"><img src="/img/itsu-avatar.webp" alt="" width="36" height="36"><span><b id="hi-name"></b>平安！需要什麼從這裡開始，找不到的直接問大蘇。</span></p>
-    <!-- M365 Copilot 直達（熊哥 10-04：簡化成小按鈕，放在兩欄右上） -->
-    <a class="copilot" href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener" title="用公司帳號直接開用，不必申請"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>M365 Copilot →</a>
-  </div>
+  <p class="hello"><img src="/img/itsu-avatar.webp" alt="" width="36" height="36"><span><b id="hi-name"></b>平安！需要什麼從這裡開始，找不到的直接問大蘇。</span></p>
 
   <div class="cols">
     <section>
@@ -66,6 +62,17 @@
     </section>
 
     <section>
+      <!-- M365 快捷列（熊哥 10-04：放在每天更新上方，放一些重要但容易被忽視的 M365 工具） -->
+      <div class="sec-head"><h2>M365 快捷</h2><span class="eyebrow">Shortcuts</span></div>
+      <nav class="quick" aria-label="M365 快捷">
+        <a href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener" title="AI 助理：摘要、翻譯、文案初稿，不必申請"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg><span>M365 Copilot</span></a>
+        <a href="https://m365.cloud.microsoft/onedrive" target="_blank" rel="noopener" title="個人雲端硬碟，檔案別只存在電腦裡"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18h11a4 4 0 0 0 .7-7.9A6 6 0 0 0 7.1 9 4.5 4.5 0 0 0 7 18z"/></svg><span>OneDrive</span></a>
+        <a href="https://m365.cloud.microsoft/onenote" target="_blank" rel="noopener" title="數位筆記本：會議紀錄、個人筆記"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 16V8l6 8V8"/></svg><span>OneNote</span></a>
+        <a href="https://planner.cloud.microsoft/" target="_blank" rel="noopener" title="團隊工作分派與進度"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9l2 2 4-4M8 15h8"/></svg><span>Planner</span></a>
+        <a href="https://forms.cloud.microsoft/" target="_blank" rel="noopener" title="問卷、報名表、回饋單"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Forms</span></a>
+        <a href="https://m365.cloud.microsoft/apps" target="_blank" rel="noopener" title="公司帳號可用的所有 M365 工具"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg><span>全部應用程式</span></a>
+      </nav>
+      <p class="quick-tip">建議用 <a href="https://www.microsoft.com/zh-tw/edge" target="_blank" rel="noopener">Edge 瀏覽器</a>，登入公司帳號後就綁定，開這些工具不用再一直登入。</p>
       <div class="sec-head"><h2>每天更新</h2><span class="eyebrow">Daily on Teams</span></div>
       <div class="stack">
         <a class="card c-green" href="https://teams.cloud.microsoft/l/channel/19%3Ad337470dd3304afca645fa961af017ce%40thread.tacv2/Claude%20AI%20%E4%BA%A4%E6%B5%81?groupId=134550f4-2f30-49e0-ae26-2c325f9c3f4e&amp;tenantId=a18de7ab-5b49-41ac-8831-357e9b0d5817" target="_blank" rel="noopener">
