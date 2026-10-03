@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="pill"><input type="radio" name="pii" value="<?= $o ?>"<?= $v['pii'] === $o ? ' checked' : '' ?> required><span><?= $o ?></span></label>
         <?php endforeach; ?>
       </div>
-      <p class="hint">僅留紀錄，不影響核准。案主姓名、地址、身分證號、健康狀況等，不論用哪個 AI 都不應直接輸入。</p>
+      <p class="hint">僅留紀錄，不影響核准。處理案主姓名、地址、身分證號、健康狀況等個資時，請小心使用，只放完成工作需要的部分。</p>
       <button class="go" type="submit">送出申請 →</button>
     </div>
   </form>
