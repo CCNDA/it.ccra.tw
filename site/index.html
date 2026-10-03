@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CCRA 資訊服務</title>
+<link rel="icon" href="/img/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+.cols{display:grid;gap:22px;grid-template-columns:1fr}
+@media (min-width:820px){.cols{grid-template-columns:1fr 1fr}}
+.cols section{margin:0}
+.stack{display:grid;gap:14px}
+.uncle-sec{margin-top:26px}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap">
+    <img class="mark" src="/img/logo.png" alt="CCRA">
+    <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
+    <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會">
+    <span class="sep" aria-hidden="true"></span>
+    <div class="title">資訊服務<small>IT Service Desk</small></div>
+    <span class="me">僅限協會 M365 帳號</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <svg class="lifeline" viewBox="0 0 960 34" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="ll" x1="0" x2="1"><stop offset="0" stop-color="var(--red)"/><stop offset=".5" stop-color="var(--yellow)"/><stop offset="1" stop-color="var(--green)"/></linearGradient></defs>
+    <path stroke="url(#ll)" d="M0 20 H360 L378 20 L392 6 L408 30 L422 2 L436 26 L448 20 H960"/>
+    <circle class="pulse" cx="422" cy="2" r="3"/>
+  </svg>
+
+  <div class="cols">
+    <section>
+      <div class="sec-head"><h2>申請</h2><span class="eyebrow">Request</span></div>
+      <div class="stack">
+        <a class="card c-red" href="/ai-apply/">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></span>
+          <span><span class="t">AI 工具使用申請</span><span class="d" style="display:block">申請 Claude 帳號。送出後資訊部審核，並知會你的部門主管。</span></span>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+        <a class="card c-yellow" href="https://teams.cloud.microsoft/l/channel/19%3A8bb4ebecb006474a833338357f93b640%40thread.tacv2/%E5%A0%B1%E4%BF%AE?groupId=134550f4-2f30-49e0-ae26-2c325f9c3f4e&amp;tenantId=a18de7ab-5b49-41ac-8831-357e9b0d5817" target="_blank" rel="noopener">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg></span>
+          <span><span class="t">資訊報修<span class="chip">報修單建置中</span></span><span class="d" style="display:block">電腦、網路、系統出狀況，先到 Teams「報修」頻道留言。</span></span>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>每天更新</h2><span class="eyebrow">Daily on Teams</span></div>
+      <div class="stack">
+        <a class="card c-green" href="https://teams.cloud.microsoft/l/channel/19%3Ad337470dd3304afca645fa961af017ce%40thread.tacv2/Claude%20AI%20%E4%BA%A4%E6%B5%81?groupId=134550f4-2f30-49e0-ae26-2c325f9c3f4e&amp;tenantId=a18de7ab-5b49-41ac-8831-357e9b0d5817" target="_blank" rel="noopener">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg></span>
+          <span><span class="t">Claude AI 交流</span><span class="d" style="display:block">每天一則新手教學，從零開始，照著做就會。</span></span>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+        <a class="card c-green" href="https://teams.cloud.microsoft/l/channel/19%3A837b62ac425248b2a68598119dc6c8a2%40thread.tacv2/%E8%B3%87%E8%A8%8A%E5%AE%89%E5%85%A8%E5%B0%8F%E5%B8%B8%E8%AD%98?groupId=134550f4-2f30-49e0-ae26-2c325f9c3f4e&amp;tenantId=a18de7ab-5b49-41ac-8831-357e9b0d5817" target="_blank" rel="noopener">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <span><span class="t">資訊安全小常識</span><span class="d" style="display:block">每天一則資安、電腦操作或 Office 小技巧。</span></span>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+      </div>
+    </section>
+  </div>
+
+  <section class="uncle-sec">
+    <div class="uncle">
+      <div class="t">有問題？先找資訊部大蘇</div>
+      <div class="d">在 Teams 傳訊息或寫信，說明遇到什麼狀況，附截圖更好。大蘇會先幫你看，需要時再轉給資訊部同工。</div>
+      <div class="btns">
+        <a class="btn" href="https://teams.microsoft.com/l/chat/0/0?users=ituncle@ccra.org.tw" target="_blank" rel="noopener">Teams 找大蘇 →</a>
+        <a class="btn ghost" href="mailto:ituncle@ccra.org.tw?subject=%E8%B3%87%E8%A8%8A%E5%95%8F%E9%A1%8C">寫信給大蘇</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p class="motto">當你感覺不到資訊部的存在，才是資訊部<em>真正存在的價值</em>。<br>但別忘了，每一個理所當然，都是有人默默付出代價。</p>
+    <p class="sign">中華基督教救助協會　資訊部</p>
+  </footer>
+</main>
+</body>
+</html>

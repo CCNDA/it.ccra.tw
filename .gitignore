@@ -1,0 +1,6 @@
+*.sqlite
+dept_map.json
+form_secret
+access_certs.json
+.DS_Store
+Thumbs.db
