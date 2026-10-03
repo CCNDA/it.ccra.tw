@@ -22,6 +22,7 @@ const PURPOSES = [
     'tea'  => ['請下午茶', '🍰', [['14:00', '16:30']], 'other'],
     'play' => ['約出去玩', '🎈', [['10:00', '19:00']], 'other'],
     'date' => ['安排相親', '💞', [['10:00', '19:00']], 'other'],   // 熊哥 10-04 加；選項一律四個字
+    'game' => ['約打電動', '🎮', [['10:00', '19:00']], 'other'],   // 熊哥 10-04 加
 ];
 $PLACES = ['teams' => 'Teams 線上', 'office' => '台北辦公室', 'ccnda' => 'CCNDA 辦公室', 'other' => '其他地方'];   // 熊哥 10-03
 
@@ -182,7 +183,7 @@ textarea{min-height:80px}
 <main class="wrap">
   <div class="hero">
     <div class="pic"><?php if (is_file('/var/www/it.ccra.tw/img/black-avatar.webp')): ?><img src="/img/black-avatar.webp" alt=""><?php else: ?>🐻<?php endif; ?></div>
-    <div><h1>與資訊部主任有約</h1><p>請王主任吃大餐、喝下午茶、約出去玩、安排相親，或有事情想討論，都歡迎！挑個時間，送出就收到邀請。</p></div>
+    <div><h1>與資訊部主任有約</h1><p>請王主任吃大餐、喝下午茶、約出去玩、安排相親、約打電動，或有事情想討論，都歡迎！挑個時間，送出就收到邀請。</p></div>
   </div>
 <?php if ($done !== null): [$s, $pl, $place] = $done; ?>
   <div class="box yay">
