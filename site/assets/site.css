@@ -166,7 +166,7 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 /* M365 Copilot 小按鈕（熊哥 10-04：簡化，放兩欄右上） */
 .hello-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 16px}
 .hello-row .hello{margin:0}
-a.copilot{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;border:1px solid var(--edge);background:var(--panel);color:var(--ink);font-weight:800;font-size:14px;text-decoration:none;white-space:nowrap;box-shadow:var(--glow);transition:border-color .15s,transform .15s}
+a.copilot{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;border:1px solid var(--edge);background:var(--panel);color:var(--ink);font-weight:800;font-size:14px;text-decoration:none;white-space:nowrap;box-shadow:var(--glow);transition:border-color .15s,transform .15s}
 a.copilot svg{width:16px;height:16px;color:var(--green)}
 a.copilot:hover{border-color:var(--green);transform:translateY(-1px)}
 a.copilot:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
