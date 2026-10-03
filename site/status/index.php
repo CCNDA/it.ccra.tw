@@ -74,6 +74,7 @@ foreach ($mons as $m) {
 .nums em{font-style:normal;color:var(--ink-2)}
 </style>
 <script src="/assets/whoami.js?v=dev" defer></script>
+<script src="/assets/edgetip.js?v=dev" defer></script>
 </head>
 <body>
 <header class="bar"><div class="wrap">
