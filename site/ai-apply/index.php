@@ -51,73 +51,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI 工具使用申請｜CCRA 資訊服務</title>
+<link rel="icon" href="/img/logo.png">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css?v=dev">
+<link rel="stylesheet" href="/assets/form.css?v=dev">
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--text:#1d2330;--muted:#5b6475;--line:#d9dde4;--accent:#1f6feb;--warn:#fff6e0;--warnline:#e8c46a;--err:#c62828}
-@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2128;--text:#e6e9ef;--muted:#9aa3b2;--line:#323844;--accent:#6ea8ff;--warn:#2d2717;--warnline:#8a6d1f;--err:#ff8a80}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:17px/1.6 "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif}
-main{max-width:720px;margin:0 auto;padding:28px 16px 48px}
-a{color:var(--accent)}
-h1{font-size:24px;margin:8px 0 16px}
-.note{background:var(--warn);border:1px solid var(--warnline);border-radius:10px;padding:12px 16px;margin-bottom:22px;font-size:15px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
-label.q{display:block;font-weight:700;margin:20px 0 4px}
-.hint{color:var(--muted);font-size:14px;margin:0 0 6px}
-input[type=text],select,textarea{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
-textarea{min-height:120px}
-.opts label{display:block;padding:3px 0}
-.ro{color:var(--muted);margin:0}
-button{margin-top:24px;font:inherit;font-weight:700;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:11px 26px;cursor:pointer}
-.errs{color:var(--err);margin:0 0 14px}
+.errs{margin:12px 0 0;padding-left:20px}
+.ro{margin:0;color:var(--ink-2)}
+#other{margin-top:10px}
 </style>
 </head>
 <body>
-<main>
-<a href="/">← CCRA 資訊服務</a>
-<h1>AI 工具使用申請</h1>
+<!-- 版型與「與資訊部主任有約」統一（熊哥 10-04） -->
+<header class="bar"><div class="wrap">
+  <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none"><img class="mark" src="/img/logo.png" alt="CCRA 資訊服務首頁">
+  <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
+  <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
+  <span class="sep" aria-hidden="true"></span>
+  <div class="title">AI 工具使用申請<small>Apply for Claude</small></div>
+</div></header>
+<main class="wrap">
+  <div class="hero">
+    <div class="pic"><img src="/img/itsu-avatar.webp" alt=""></div>
+    <div><h1><?= h($v['name'] !== '' ? preg_replace('/^\d{3}-/', '', $v['name']) . '，' : '') ?>平安！想申請 AI 工具嗎？</h1><p>先看看 Copilot Chat 夠不夠用；不夠的話填下面，資訊部審核後會寄信通知你。</p></div>
+  </div>
 <?php if ($done): ?>
-<div class="card">
-<p><b>已收到您的申請。</b></p>
-<p>資訊部會審核並同時知會您的部門主管，確認信會寄到 <?= h($email) ?>。</p>
-<p>等待期間，逐字稿整理、摘要、文案初稿、翻譯、潤稿、影片腳本、生成圖片這些工作，用公司帳號登入 <a href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener">M365 Copilot Chat</a> 就可以先做。</p>
-</div>
+  <div class="box yay">
+    <div class="big">📨</div>
+    <h2>收到你的申請了！</h2>
+    <p>資訊部會審核，並同時知會你的部門主管；結果會寄到 <?= h($email) ?>。</p>
+    <p class="hint">等待期間，逐字稿整理、摘要、文案初稿、翻譯、潤稿、影片腳本、生成圖片，用公司帳號登入 <a href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener">M365 Copilot Chat</a> 就可以先做。</p>
+    <p><a class="btn ghost" href="/">回首頁</a></p>
+  </div>
 <?php else: ?>
-<div class="note">申請前請先確認：只要用公司帳號登入 <a href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener">M365 Copilot Chat</a>，逐字稿整理、摘要、文案初稿、翻譯、潤稿、影片腳本、生成圖片都已經可以做，不需要申請。<br>需要它交回檔案、一次比對多份文件、或長篇來回分析，才需要申請 Claude。</div>
-<?php if ($err): ?><ul class="errs"><?php foreach ($err as $e) echo '<li>' . h($e) . '</li>'; ?></ul><?php endif; ?>
-<form method="post" class="card">
-<input type="hidden" name="csrf" value="<?= h($csrf) ?>">
-<label class="q" for="name" style="margin-top:0">姓名</label>
-<input type="text" id="name" name="name" maxlength="50" required value="<?= h($v['name']) ?>">
-
-<label class="q">公司信箱</label>
-<p class="ro"><?= h($email) ?>（登入帳號，核准結果會寄到這裡）</p>
-
-<label class="q" for="dept">部門</label>
-<p class="hint">已依您的 M365 帳號預先選好，不對請自行更改。系統會依此知會您的部門主管</p>
-<select id="dept" name="dept" required>
-<option value="">請選擇</option>
-<?php foreach ($DEPTS as $d) echo '<option' . ($v['dept'] === $d ? ' selected' : '') . '>' . h($d) . '</option>'; ?>
-</select>
-
-<label class="q">預計使用方式</label>
-<p class="hint">可複選</p>
-<div class="opts">
-<?php foreach ($USES as $u) echo '<label><input type="checkbox" name="uses[]" value="' . h($u) . '"' . (in_array($u, $v['uses'], true) ? ' checked' : '') . '> ' . h($u) . '</label>'; ?>
-<input type="text" name="other" maxlength="200" placeholder="勾選「其他」請簡述" value="<?= h($v['other']) ?>">
-</div>
-
-<label class="q" for="why">為什麼 Copilot Chat 不夠用？</label>
-<p class="hint">請簡述您的工作內容與卡住的地方</p>
-<textarea id="why" name="why" maxlength="2000" required><?= h($v['why']) ?></textarea>
-
-<label class="q">工作會不會處理個資或敏感資料？</label>
-<p class="hint">僅留紀錄，不影響核准。案主姓名、地址、身分證號、健康狀況等，不論用哪個 AI 都不應直接輸入。</p>
-<div class="opts">
-<?php foreach (['不會', '會'] as $o) echo '<label><input type="radio" name="pii" value="' . $o . '"' . ($v['pii'] === $o ? ' checked' : '') . ' required> ' . $o . '</label>'; ?>
-</div>
-
-<button type="submit">送出申請</button>
-</form>
+  <div class="box note">
+    <p class="step"><b>1</b>申請前先確認</p>
+    <p style="margin:0">用公司帳號登入 <a href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener">M365 Copilot Chat</a>，逐字稿整理、摘要、文案初稿、翻譯、潤稿、影片腳本、生成圖片都已經可以做，<b>不需要申請</b>。<br>需要它交回檔案、一次比對多份文件、或長篇來回分析，才需要申請 Claude。</p>
+  </div>
+  <?php if ($err): ?><div class="box"><ul class="errs err"><?php foreach ($err as $e) echo '<li>' . h($e) . '</li>'; ?></ul></div><?php endif; ?>
+  <form method="post">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <div class="box">
+      <p class="step"><b>2</b>你是誰</p>
+      <label class="q" for="name">姓名</label>
+      <input type="text" id="name" name="name" maxlength="50" required value="<?= h($v['name']) ?>">
+      <label class="q">公司信箱</label>
+      <p class="ro"><?= h($email) ?>（登入帳號，核准結果會寄到這裡）</p>
+      <label class="q" for="dept">部門</label>
+      <p class="hint" style="margin:0 0 6px">已依你的 M365 帳號預先選好，不對請自行更改；系統會依此知會你的部門主管。</p>
+      <select id="dept" name="dept" required>
+        <option value="">請選擇</option>
+        <?php foreach ($DEPTS as $d) echo '<option' . ($v['dept'] === $d ? ' selected' : '') . '>' . h($d) . '</option>'; ?>
+      </select>
+    </div>
+    <div class="box">
+      <p class="step"><b>3</b>想用來做什麼（可複選）</p>
+      <div class="pills">
+        <?php foreach ($USES as $u): ?>
+          <label class="pill"><input type="checkbox" name="uses[]" value="<?= h($u) ?>"<?= in_array($u, $v['uses'], true) ? ' checked' : '' ?>><span><?= h($u) ?></span></label>
+        <?php endforeach; ?>
+      </div>
+      <input type="text" id="other" name="other" maxlength="200" placeholder="勾選「其他」請簡述" value="<?= h($v['other']) ?>">
+      <label class="q" for="why">為什麼 Copilot Chat 不夠用？</label>
+      <p class="hint" style="margin:0 0 6px">簡述你的工作內容與卡住的地方</p>
+      <textarea id="why" name="why" maxlength="2000" required style="min-height:120px"><?= h($v['why']) ?></textarea>
+    </div>
+    <div class="box">
+      <p class="step"><b>4</b>工作會不會處理個資或敏感資料？</p>
+      <div class="pills">
+        <?php foreach (['不會', '會'] as $o): ?>
+          <label class="pill"><input type="radio" name="pii" value="<?= $o ?>"<?= $v['pii'] === $o ? ' checked' : '' ?> required><span><?= $o ?></span></label>
+        <?php endforeach; ?>
+      </div>
+      <p class="hint">僅留紀錄，不影響核准。案主姓名、地址、身分證號、健康狀況等，不論用哪個 AI 都不應直接輸入。</p>
+      <button class="go" type="submit">送出申請 →</button>
+    </div>
+  </form>
 <script>
 // 姓名從 M365 登入資料帶入（可修改）
 var n = document.getElementById('name');

@@ -126,27 +126,8 @@ foreach ($slots ?? [] as $k => $days) foreach ($days as $d => $list) $data[$k][$
 <link rel="icon" href="/img/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css?v=dev">
+<link rel="stylesheet" href="/assets/form.css?v=dev">
 <style>
-/* 莫蘭迪藍綠（熊哥 10-03：要藍綠搭配、符合 CCNDA 配色，可愛但用莫蘭迪色系） */
-:root{--teal:#6f9a96;--teal-d:#557c79;--blue:#8aa3b6;--sage:#a9bfb3;--mist:#d9e4e1;--cream:#f3f6f5}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--cream:#1d2a2e;--mist:#2a3a3d}}
-body{background-image:radial-gradient(600px 300px at 90% 0%,color-mix(in srgb,var(--sage) 30%,transparent),transparent 70%),radial-gradient(600px 320px at 0% 20%,color-mix(in srgb,var(--blue) 26%,transparent),transparent 70%),linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:auto,auto,28px 28px,28px 28px}
-.hero{display:flex;align-items:center;gap:16px;margin:22px 0 4px}
-.hero .pic{width:76px;height:76px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:38px;background:linear-gradient(135deg,var(--sage),var(--blue));border:3px solid #fff;box-shadow:0 8px 20px -10px rgba(85,124,121,.6);overflow:hidden;animation:bob 3s ease-in-out infinite}
-.hero .pic img{width:100%;height:100%;object-fit:cover;object-position:top}
-@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-.hero h1{margin:0;font-size:clamp(22px,4vw,28px);font-weight:900}
-.hero p{margin:4px 0 0;color:var(--ink-2);font-size:15px}
-.box{background:var(--panel);border:1px solid var(--edge);border-radius:24px;padding:18px;box-shadow:var(--glow);margin-top:16px}
-.step{display:flex;align-items:center;gap:8px;font-weight:800;margin:0 0 10px;font-size:16px}
-.step b{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--teal);color:#fff;font-size:13px}
-.pills{display:flex;flex-wrap:wrap;gap:10px}
-.pill{position:relative}
-.pill input{position:absolute;opacity:0;inset:0}
-.pill span{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;border:2px solid var(--edge);background:var(--cream);font-weight:800;cursor:pointer;transition:transform .15s}
-.pill span:hover{transform:translateY(-2px)}
-.pill input:checked+span{border-color:var(--teal);background:var(--mist)}
-.pill input:focus-visible+span{outline:3px solid var(--focus);outline-offset:2px}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .cal-head strong{font-size:17px}
 .cal-head button{border:0;background:var(--cream);border-radius:12px;width:38px;height:38px;font-size:18px;cursor:pointer;color:var(--ink)}
@@ -163,14 +144,6 @@ body{background-image:radial-gradient(600px 300px at 90% 0%,color-mix(in srgb,va
 .times{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .times button{border:2px solid var(--edge);background:var(--cream);border-radius:12px;padding:8px 12px;font:500 14px/1 "IBM Plex Mono",monospace;cursor:pointer;color:var(--ink)}
 .times button.sel{background:var(--teal-d);color:#fff;border-color:var(--teal-d)}
-.hint{color:var(--muted);font-size:14px}
-label.q{display:block;font-weight:800;margin:14px 0 4px}
-input[type=text],textarea{width:100%;font:inherit;color:inherit;background:var(--cream);border:2px solid var(--edge);border-radius:14px;padding:10px 12px}
-textarea{min-height:80px}
-.go{margin-top:18px;border:0;border-radius:999px;padding:13px 26px;font:900 16px/1 "Noto Sans TC",sans-serif;color:#fff;background:linear-gradient(135deg,var(--teal),var(--blue));cursor:pointer;box-shadow:0 10px 22px -12px rgba(85,124,121,.8)}
-.go:disabled{opacity:.45;cursor:default;box-shadow:none}
-.err{color:var(--red);font-weight:800}
-.yay{text-align:center;padding:26px 18px}
 .bear{display:none}
 @media (min-width:1360px){
   .calbox{position:relative}
@@ -186,8 +159,6 @@ textarea{min-height:80px}
 @keyframes sway{0%,100%{transform:rotate(0)}50%{transform:rotate(-1.5deg)}}
 @keyframes hop{0%{transform:translateY(0)}40%{transform:translateY(-10px)}100%{transform:translateY(0)}}
 @media (prefers-reduced-motion:reduce){.bear-btn img,.bear-btn.hop img{animation:none}}
-.yay .big{font-size:46px;animation:bob 2s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){.hero .pic,.yay .big{animation:none}}
 </style>
 </head>
 <body>

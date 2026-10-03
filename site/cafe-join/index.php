@@ -49,45 +49,46 @@ $asked = $st->fetchColumn();
 <link rel="icon" href="/img/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css?v=dev">
-<style>
-.panel{background:var(--panel);border:1px solid var(--edge);border-radius:18px;padding:22px;box-shadow:var(--glow);margin-top:22px}
-.panel h1{font-size:24px;margin:0 0 6px}
-label{display:block;font-weight:700;margin:16px 0 4px}
-input[type=text],textarea{width:100%;font:inherit;color:inherit;background:var(--paper);border:1px solid var(--edge);border-radius:10px;padding:9px 11px}
-textarea{min-height:80px}
-.err{color:var(--red);font-weight:700}
-.btn{margin-top:18px}
-</style>
+<link rel="stylesheet" href="/assets/form.css?v=dev">
 </head>
 <body>
+<!-- 版型與「與資訊部主任有約」統一（熊哥 10-04） -->
 <header class="bar"><div class="wrap">
   <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none"><img class="mark" src="/img/logo.png" alt="CCRA 資訊服務首頁">
   <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
   <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
   <span class="sep" aria-hidden="true"></span>
-  <div class="title">資訊服務<small>IT Service Desk</small></div>
+  <div class="title">資訊部咖啡廳<small>IT Café</small></div>
 </div></header>
 <main class="wrap">
-<div class="panel">
-  <h1>資訊部咖啡廳</h1>
-  <p class="d">資訊部在 Teams 上的共用頻道：想找資訊部同仁討論事情，或是一起靈修，都歡迎進來坐坐。按下面申請，頻道管理者會把你加進來。</p>
+  <div class="hero">
+    <div class="pic">☕</div>
+    <div><h1><?= h($who['name'] !== '' ? preg_replace('/^\d{3}-/', '', $who['name']) . '，' : '') ?>平安！進來坐坐嗎？</h1><p>資訊部在 Teams 上的共用頻道：想找資訊部同仁討論事情，或是一起靈修，都歡迎。</p></div>
+  </div>
 <?php if ($asked || isset($_GET['sent'])): ?>
-  <p><b>已收到你的申請</b><?= $asked ? '（' . h(substr($asked, 0, 10)) . '）' : '' ?>。加入後 Teams 左側「資訊部」團隊底下會出現「資訊部咖啡廳」。</p>
-  <p><a class="btn ghost" href="/">回首頁</a></p>
+  <div class="box yay">
+    <div class="big">☕</div>
+    <h2>收到你的申請了！</h2>
+    <p><?= $asked ? '申請日期 ' . h(substr($asked, 0, 10)) . '。' : '' ?>頻道管理者會把你加進來。</p>
+    <p class="hint">加入後，Teams 左側「資訊部」團隊底下會出現「資訊部咖啡廳」。</p>
+    <p><a class="btn ghost" href="/">回首頁</a></p>
+  </div>
 <?php else: ?>
-  <?php if ($err): ?><p class="err"><?= h($err) ?></p><?php endif; ?>
   <form method="post">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
-    <label for="name">姓名</label>
-    <input type="text" id="name" name="name" maxlength="50" required value="<?= h($who['name']) ?>">
-    <label>登入帳號</label>
-    <p class="d" style="margin:0"><?= h($email) ?></p>
-    <label for="note">想說的話（選填）</label>
-    <textarea id="note" name="note" maxlength="300"></textarea>
-    <button class="btn" type="submit">申請加入 →</button>
+    <div class="box">
+      <p class="step"><b>1</b>申請加入</p>
+      <?php if ($err): ?><p class="err"><?= h($err) ?></p><?php endif; ?>
+      <label class="q" for="name">姓名</label>
+      <input type="text" id="name" name="name" maxlength="50" required value="<?= h($who['name']) ?>">
+      <label class="q">登入帳號</label>
+      <p style="margin:0;color:var(--ink-2)"><?= h($email) ?></p>
+      <label class="q" for="note">想說的話（選填）</label>
+      <textarea id="note" name="note" maxlength="300"></textarea>
+      <button class="go" type="submit">申請加入 →</button>
+    </div>
   </form>
 <?php endif; ?>
-</div>
 </main>
 </body>
 </html>
