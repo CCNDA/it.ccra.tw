@@ -15,12 +15,12 @@ const REST_MIN = 30;          // 每個行程結束後留 30 分鐘休息
 const STEP_MIN = 30;          // 開始時間每 30 分鐘一格
 const DAYS_AHEAD = 92;        // 開放三個月
 const LEAD_HOURS = 3;         // 至少提前 3 小時
-// 目的 => [顯示, 圖示, 可開始的時間窗（會議需在窗內結束）, 預設地點]
+// 目的 => [顯示, 圖示, 開始時間範圍（含頭尾）, 預設地點]。熊哥 10-04：開放時間 10–19、晚餐開放到七點
 const PURPOSES = [
-    'talk' => ['討論事情', '💬', [['09:30', '12:00'], ['13:30', '17:30']], 'teams'],
-    'meal' => ['請吃飯',   '🍱', [['12:00', '13:30'], ['18:00', '19:30']], 'other'],
-    'tea'  => ['請下午茶', '🍰', [['14:30', '17:00']], 'other'],
-    'play' => ['約出去玩', '🎈', [['09:30', '19:30']], 'other'],
+    'talk' => ['討論事情', '💬', [['10:00', '19:00']], 'teams'],
+    'meal' => ['請吃飯',   '🍱', [['11:30', '13:00'], ['17:30', '19:00']], 'other'],
+    'tea'  => ['請下午茶', '🍰', [['14:00', '16:30']], 'other'],
+    'play' => ['約出去玩', '🎈', [['10:00', '19:00']], 'other'],
 ];
 $PLACES = ['teams' => 'Teams 線上', 'office' => '台北辦公室', 'ccnda' => 'CCNDA 辦公室', 'other' => '其他地方'];   // 熊哥 10-03
 
@@ -54,7 +54,7 @@ function free_slots() {
         for ($d = clone $from; $d < $to; $d->modify('+1 day')) {
             foreach ($wins as [$a, $b]) {
                 $s = strtotime($d->format('Y-m-d ') . $a . ' Asia/Taipei'); $end = strtotime($d->format('Y-m-d ') . $b . ' Asia/Taipei');
-                for (; $s + SLOT_MIN * 60 <= $end; $s += STEP_MIN * 60) {
+                for (; $s <= $end; $s += STEP_MIN * 60) {   // $end 是最晚的開始時間
                     if ($s < $now + LEAD_HOURS * 3600) continue;
                     $e = $s + SLOT_MIN * 60; $ok = true;
                     // 衝突：開始落在別的行程＋休息內，或這次會議＋休息蓋到別的行程
