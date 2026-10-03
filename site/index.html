@@ -25,7 +25,7 @@
     <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會">
     <span class="sep" aria-hidden="true"></span>
     <div class="title">資訊服務<small>IT Service Desk</small></div>
-    <span class="me">僅限協會 M365 帳號</span>
+    <span class="me"><img class="av" src="/img/itsu-avatar.webp" alt="">資訊部大蘇</span>
   </div>
 </header>
 
@@ -35,6 +35,14 @@
     <path stroke="url(#ll)" d="M0 20 H360 L378 20 L392 6 L408 30 L422 2 L436 26 L448 20 H960"/>
     <circle class="pulse" cx="422" cy="2" r="3"/>
   </svg>
+
+  <section class="hello">
+    <div class="bubble">
+      <p class="hi"><span id="hi-name"></span>平安！我是資訊部的大蘇。</p>
+      <p>申請、報修、看主機狀況，都從這裡開始；找不到的，直接問我。</p>
+    </div>
+    <img class="wave" src="/img/itsu-wave.webp" alt="資訊部大蘇揮手打招呼" width="383" height="600">
+  </section>
 
   <div class="cols">
     <section>
@@ -85,6 +93,7 @@
 
   <section class="uncle-sec">
     <div class="uncle">
+      <img class="point" src="/img/itsu-point.webp" alt="" width="607" height="420">
       <div class="t">有問題？先找資訊部大蘇</div>
       <div class="d">在 Teams 傳訊息或寫信，說明遇到什麼狀況，附截圖更好。大蘇會先幫你看，需要時再轉給資訊部同工。</div>
       <div class="btns">
@@ -99,5 +108,11 @@
     <p class="sign">中華基督教救助協會　資訊部</p>
   </footer>
 </main>
+<script>
+fetch('/cdn-cgi/access/get-identity').then(function (r) { return r.json(); }).then(function (j) {
+  var n = (j.name || '').replace(/^\d{3}-/, '');
+  if (n) document.getElementById('hi-name').textContent = n + '，';
+}).catch(function () {});
+</script>
 </body>
 </html>
