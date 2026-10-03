@@ -4,3 +4,4 @@ form_secret
 access_certs.json
 .DS_Store
 Thumbs.db
+site/*-preview.html
