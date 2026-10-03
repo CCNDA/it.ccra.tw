@@ -50,6 +50,7 @@ $asked = $st->fetchColumn();
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css?v=dev">
 <link rel="stylesheet" href="/assets/form.css?v=dev">
+<script src="/assets/whoami.js?v=dev" defer></script>
 </head>
 <body>
 <!-- 版型與「與資訊部主任有約」統一（熊哥 10-04） -->

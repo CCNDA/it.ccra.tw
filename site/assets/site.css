@@ -50,7 +50,15 @@ a{color:inherit}
 .bar .title{font-weight:900;font-size:19px;letter-spacing:.06em;white-space:nowrap}
 .bar .title small{display:block;font:500 10.5px/1.2 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
 .bar .me{margin-left:auto;font-size:13px;color:var(--muted);white-space:nowrap}
-@media (max-width:640px){.bar img.word{display:none!important}.bar .me{display:none}}
+/* 登入身分（whoami.js 產生；熊哥 10-04：右上角顯示登入者，連到 M365 帳戶設定） */
+.bar a.me{display:inline-flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);padding:4px 10px 4px 4px;border-radius:999px;border:1px solid var(--edge);background:var(--panel);transition:border-color .15s}
+.bar a.me:hover{border-color:var(--green)}
+.bar a.me:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.who-av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;font-weight:900;font-size:14px;color:#fff;background:linear-gradient(135deg,#6f9a96,#8aa3b6)}
+.who-tx{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.who-tx b{font-size:13.5px}
+.who-tx small{font:500 11px/1.2 "IBM Plex Mono",ui-monospace,monospace;color:var(--muted)}
+@media (max-width:640px){.bar img.word{display:none!important}.bar span.me{display:none}.bar a.me{padding:3px}.who-tx{display:none}}
 .eyebrow{font:500 12px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
 
 /* 招牌：三色生命線（頂部列正下方的細線） */
@@ -120,7 +128,7 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 .hello img{width:36px;height:36px;border-radius:50%;object-fit:cover;object-position:top;flex:none;background:color-mix(in srgb,var(--green) 18%,var(--panel));border:1.5px solid var(--edge)}
 .hello b{color:var(--ink)}
 .uncle img.av{width:56px;height:56px;border-radius:50%;object-fit:cover;object-position:top;flex:none;background:color-mix(in srgb,var(--green) 18%,var(--panel));border:1.5px solid var(--edge)}
-@media (max-width:640px){.bar .me{font-size:0;gap:0}}
+@media (max-width:640px){.bar span.me{font-size:0;gap:0}}
 
 /* ── 互動大蘇（電腦版右側空白處；<1240px 不顯示，不壓內容） ── */
 .itsu{display:none}

@@ -60,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 .ro{margin:0;color:var(--ink-2)}
 #other{margin-top:10px}
 </style>
+<script src="/assets/whoami.js?v=dev" defer></script>
 </head>
 <body>
 <!-- 版型與「與資訊部主任有約」統一（熊哥 10-04） -->

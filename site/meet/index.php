@@ -160,6 +160,7 @@ foreach ($slots ?? [] as $k => $days) foreach ($days as $d => $list) $data[$k][$
 @keyframes hop{0%{transform:translateY(0)}40%{transform:translateY(-10px)}100%{transform:translateY(0)}}
 @media (prefers-reduced-motion:reduce){.bear-btn img,.bear-btn.hop img{animation:none}}
 </style>
+<script src="/assets/whoami.js?v=dev" defer></script>
 </head>
 <body>
 <header class="bar"><div class="wrap">

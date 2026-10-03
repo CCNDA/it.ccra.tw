@@ -73,6 +73,7 @@ foreach ($mons as $m) {
 .nums{grid-column:2 / 4;color:var(--muted);font:500 12.5px/1.5 "IBM Plex Mono",ui-monospace,monospace;display:flex;flex-wrap:wrap;gap:4px 14px}
 .nums em{font-style:normal;color:var(--ink-2)}
 </style>
+<script src="/assets/whoami.js?v=dev" defer></script>
 </head>
 <body>
 <header class="bar"><div class="wrap">

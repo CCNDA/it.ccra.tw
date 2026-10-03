@@ -11,7 +11,7 @@ git reset -q --hard origin/main
 rsync -a --delete site/ /var/www/it.ccra.tw/
 # 靜態檔帶版本號（?v=提交雜湊），避免 Cloudflare／瀏覽器拿舊的 CSS（10-03 熊哥看到舊樣式）
 V=$(git rev-parse --short HEAD)
-grep -rlE '(site|form)\.css\?v=' /var/www/it.ccra.tw | xargs -r sed -i -E "s/(site|form)\.css\?v=[A-Za-z0-9]*/\1.css?v=$V/g"
+grep -rlE '(site|form|whoami)\.(css|js)\?v=' /var/www/it.ccra.tw | xargs -r sed -i -E "s/(site|form|whoami)\.(css|js)\?v=[A-Za-z0-9]*/\1.\2?v=$V/g"
 install -m 644 lib/*.php /var/www/it-lib/
 # systemd 單元有變才重新載入
 for u in it-ccra-deploy.service it-ccra-deploy.timer it-ccra-ccnda.service it-ccra-ccnda.timer; do
