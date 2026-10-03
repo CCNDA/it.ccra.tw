@@ -1,0 +1,8 @@
+[Unit]
+Description=Expand CCNDA free/busy ICS for it.ccra.tw meeting page
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+ExecStart=/usr/bin/python3 /opt/it.ccra.tw/deploy/ccnda_busy.py

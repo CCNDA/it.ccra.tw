@@ -12,7 +12,12 @@ rsync -a --delete site/ /var/www/it.ccra.tw/
 # 靜態檔帶版本號（?v=提交雜湊），避免 Cloudflare／瀏覽器拿舊的 CSS（10-03 熊哥看到舊樣式）
 V=$(git rev-parse --short HEAD)
 grep -rl 'site.css?v=' /var/www/it.ccra.tw | xargs -r sed -i "s/site\.css?v=[A-Za-z0-9]*/site.css?v=$V/g"
-install -m 644 lib/access.php /var/www/it-lib/access.php
+install -m 644 lib/*.php /var/www/it-lib/
+# systemd 單元有變才重新載入
+for u in it-ccra-deploy.service it-ccra-deploy.timer it-ccra-ccnda.service it-ccra-ccnda.timer; do
+    if ! cmp -s deploy/$u /etc/systemd/system/$u; then cp deploy/$u /etc/systemd/system/$u; RELOAD_UNITS=1; fi
+done
+if [ "${RELOAD_UNITS:-}" ]; then systemctl daemon-reload; systemctl enable --now it-ccra-ccnda.timer it-ccra-deploy.timer; fi
 if ! cmp -s deploy/nginx-it.ccra.tw.conf /etc/nginx/sites-available/it.ccra.tw; then
     cp deploy/nginx-it.ccra.tw.conf /etc/nginx/sites-available/it.ccra.tw
     nginx -t && systemctl reload nginx
