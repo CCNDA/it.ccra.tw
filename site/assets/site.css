@@ -138,3 +138,14 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 @keyframes hop{0%{transform:translateY(0)}40%{transform:translateY(-10px)}100%{transform:translateY(0)}}
 @media (prefers-reduced-motion:reduce){.itsu-btn img,.itsu-btn.hop img{animation:none}}
 @media (min-width:1360px){.hello{display:none}}
+
+/* 有問題？區塊：頭像＋文字在左、按鈕靠右；窄螢幕改直排、按鈕置中（熊哥 10-03） */
+.uncle{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px 20px}
+.uncle .txt .t{margin-bottom:4px}
+.uncle .txt .d{flex:none}
+.uncle .btns{justify-content:flex-end}
+@media (max-width:760px){
+  .uncle{grid-template-columns:auto 1fr}
+  .uncle .btns{grid-column:1 / -1;justify-content:center}
+}
+.hello{gap:12px}

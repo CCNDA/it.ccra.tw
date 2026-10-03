@@ -50,7 +50,7 @@ foreach ($mons as $m) {
 <title>主機狀況｜CCRA 資訊服務</title>
 <link rel="icon" href="/img/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/site.css?v=dev">
 <style>
 .sum{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0 6px}
 .sum div{flex:1 1 140px;background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:14px 16px;box-shadow:var(--glow)}

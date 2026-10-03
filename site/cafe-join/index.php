@@ -48,7 +48,7 @@ $asked = $st->fetchColumn();
 <title>申請加入資訊部咖啡廳｜CCRA 資訊服務</title>
 <link rel="icon" href="/img/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/site.css?v=dev">
 <style>
 .panel{background:var(--panel);border:1px solid var(--edge);border-radius:18px;padding:22px;box-shadow:var(--glow);margin-top:22px}
 .panel h1{font-size:24px;margin:0 0 6px}

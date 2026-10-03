@@ -9,6 +9,9 @@ git fetch -q origin main
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] && [ "${1:-}" != "--force" ] && exit 0
 git reset -q --hard origin/main
 rsync -a --delete site/ /var/www/it.ccra.tw/
+# 靜態檔帶版本號（?v=提交雜湊），避免 Cloudflare／瀏覽器拿舊的 CSS（10-03 熊哥看到舊樣式）
+V=$(git rev-parse --short HEAD)
+grep -rl 'site.css?v=' /var/www/it.ccra.tw | xargs -r sed -i "s/site\.css?v=[A-Za-z0-9]*/site.css?v=$V/g"
 install -m 644 lib/access.php /var/www/it-lib/access.php
 if ! cmp -s deploy/nginx-it.ccra.tw.conf /etc/nginx/sites-available/it.ccra.tw; then
     cp deploy/nginx-it.ccra.tw.conf /etc/nginx/sites-available/it.ccra.tw
