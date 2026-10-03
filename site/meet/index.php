@@ -192,13 +192,16 @@ textarea{min-height:80px}
 </head>
 <body>
 <header class="bar"><div class="wrap">
-  <a href="/"><img class="mark" src="/img/logo.png" alt="CCRA 資訊服務首頁"></a>
+  <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none"><img class="mark" src="/img/logo.png" alt="CCRA 資訊服務首頁">
+  <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
+  <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
+  <span class="sep" aria-hidden="true"></span>
   <div class="title">與資訊部主任有約<small>Book a meeting</small></div>
 </div></header>
 <main class="wrap">
   <div class="hero">
     <div class="pic"><?php if (is_file('/var/www/it.ccra.tw/img/black-avatar.webp')): ?><img src="/img/black-avatar.webp" alt=""><?php else: ?>🐻<?php endif; ?></div>
-    <div><h1>與資訊部主任有約</h1><p>請王主任吃大餐、喝下午茶、約出去玩、約打電動、安排相親，或有事情想討論，都歡迎！挑個時間，送出就收到邀請。</p></div>
+    <div><h1><?= h($v['name'] !== '' ? preg_replace('/^\d{3}-/', '', $v['name']) . '，' : '') ?>平安！想約我嗎？</h1><p>請我吃大餐、喝下午茶、約出去玩、約打電動、安排相親，或有事情想討論，都歡迎！挑個時間，送出就收到邀請。</p></div>
   </div>
 <?php if ($done !== null): [$s, $pl, $place] = $done; ?>
   <div class="box yay">
@@ -323,7 +326,7 @@ textarea{min-height:80px}
   var TIRED = ['好忙好累，都不用休息⋯能者過勞啊！', '我的行事曆比台北捷運還擠 🚇', '休息？那是什麼，可以吃嗎？', '每一個空檔都很珍貴，請好好珍惜 🙏'];
   function talk(t) { say.textContent = t; say.hidden = false; bb.classList.remove('hop'); void bb.offsetWidth; bb.classList.add('hop'); }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
-  talk((NAME ? NAME + '，' : '') + '平安！想約我做什麼呀？');
+  talk('有綠點的日子都可以約，先挑想做什麼吧～');
   [].forEach.call(form.querySelectorAll('input[name=purpose]'), function (r) { r.addEventListener('change', function () { talk(pick(BY[r.value] || TIRED)); }); });
   document.getElementById('grid').addEventListener('click', function (e) {
     if (e.target.classList && e.target.classList.contains('on')) talk(pick(['這天呀，我看看⋯可以！', '好，這天先幫你留著 👍', '這天還有空，算你運氣好！']));

@@ -61,7 +61,10 @@ textarea{min-height:80px}
 </head>
 <body>
 <header class="bar"><div class="wrap">
-  <a href="/"><img class="mark" src="/img/logo.png" alt="CCRA 資訊服務首頁"></a>
+  <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none"><img class="mark" src="/img/logo.png" alt="CCRA 資訊服務首頁">
+  <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
+  <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
+  <span class="sep" aria-hidden="true"></span>
   <div class="title">資訊服務<small>IT Service Desk</small></div>
 </div></header>
 <main class="wrap">
