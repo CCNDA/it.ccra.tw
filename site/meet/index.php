@@ -81,7 +81,7 @@ if ($slots !== null && $_SERVER['REQUEST_METHOD'] === 'POST') {
                'attendees' => [['emailAddress' => ['address' => $email, 'name' => $name], 'type' => 'required']],
                'allowNewTimeProposals' => true];
         if ($v['mode'] === 'teams') { $ev['isOnlineMeeting'] = true; $ev['onlineMeetingProvider'] = 'teamsForBusiness'; }
-        else $ev['location'] = ['displayName' => '資訊部（台北辦公室）'];
+        else $ev['location'] = ['displayName' => '辦公室（當面談）'];
         [$code, $j] = graph('POST', '/users/' . OWNER . '/calendar/events', $ev);
         if ($code === 201) {
             $db = new PDO('sqlite:' . STATE_DIR . '/meet.sqlite');
@@ -142,7 +142,7 @@ textarea{min-height:80px}
 <?php if ($done !== null): ?>
   <div class="panel">
     <p><b>約好了！</b><?= h(date('n/j', $done)) ?>（<?= $wd[(int)date('w', $done)] ?>）<?= h(date('H:i', $done)) ?>–<?= h(date('H:i', $done + SLOT_MIN * 60)) ?></p>
-    <p>會議邀請已寄到 <?= h($email) ?><?= $v['mode'] === 'teams' ? '，裡面有 Teams 會議連結' : '，地點：資訊部' ?>。要改時間可以直接在邀請裡「建議新時間」。</p>
+    <p>會議邀請已寄到 <?= h($email) ?><?= $v['mode'] === 'teams' ? '，裡面有 Teams 會議連結' : '，地點：辦公室' ?>。要改時間可以直接在邀請裡「建議新時間」。</p>
     <p><a class="btn ghost" href="/">回首頁</a></p>
   </div>
 <?php elseif ($slots === null): ?>
@@ -170,7 +170,7 @@ textarea{min-height:80px}
     <label class="q">方式</label>
     <div class="modes">
       <label><input type="radio" name="mode" value="teams"<?= $v['mode'] !== 'room' ? ' checked' : '' ?>> Teams 線上</label>
-      <label><input type="radio" name="mode" value="room"<?= $v['mode'] === 'room' ? ' checked' : '' ?>> 到資訊部當面談</label>
+      <label><input type="radio" name="mode" value="room"<?= $v['mode'] === 'room' ? ' checked' : '' ?>> 到辦公室當面談</label>
     </div>
     <button class="btn" type="submit" style="margin-top:18px">送出預約 →</button>
     <p class="note">只會顯示主任有空的時段；行程內容不會公開。</p>
