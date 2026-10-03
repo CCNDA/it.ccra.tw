@@ -8,11 +8,12 @@
 ## 架構
 
 ```
-同工瀏覽器 ──► Cloudflare Access（Microsoft Entra ID 登入）──► nginx ──► 靜態頁／PHP
+同工瀏覽器 ──► Cloudflare Access（Microsoft Entra ID 登入）──► Cloudflare Tunnel ──► 內部主機 nginx（127.0.0.1）──► 靜態頁／PHP
 ```
 
 - **登入**：Cloudflare Zero Trust Access，身分來源為協會的 Microsoft Entra ID；只允許協會租用戶的帳號。
-- **來源端防護**：nginx 只放行 Cloudflare IP（`deploy/cloudflare-only.conf`），PHP 另外驗證 `Cf-Access-Jwt-Assertion`（RS256 簽章、AUD、iss、exp，見 `lib/access.php`）——只信標頭是不夠的。
+- **主機在內網**：網站放在協會內部主機，經 Cloudflare Tunnel（cloudflared 由內往外連）對外，主機沒有任何對外開放的埠；nginx 只聽 127.0.0.1。
+- **來源端仍驗證登入**：PHP 驗證 `Cf-Access-Jwt-Assertion`（RS256 簽章、AUD、iss、exp，見 `lib/access.php`）——只信標頭是不夠的。
 - **AI 工具使用申請**（`site/ai-apply/`）：信箱取自登入憑證，姓名與部門依 M365 帳號預選；資料存 SQLite（`/var/lib/it-ccra/`，不在網站根目錄）。
 
 ## 目錄
@@ -21,23 +22,28 @@
 |---|---|
 | `site/` | 網站根目錄（`/var/www/it.ccra.tw`） |
 | `lib/access.php` | Cloudflare Access JWT 驗證（`/var/www/it-lib/`，放在網站根目錄之外） |
-| `deploy/` | nginx 站台設定與 Cloudflare IP 白名單 |
+| `deploy/` | nginx 站台設定、部署腳本與 systemd timer |
 
-## 部署（Ubuntu + nginx + PHP-FPM 8.3）
+## 發布：推上 GitHub 就上線
+
+`main` 分支是正式版。主機每 2 分鐘檢查一次（`it-ccra-deploy.timer`），有新提交就執行 `deploy/deploy.sh`：同步 `site/`、`lib/`，nginx 設定有變才重新載入。
+
+採「主機自己拉」而不是 GitHub Actions 推：主機在內網沒有對外入口，而公開程式庫不宜掛 self-hosted runner。
+
+## 首次安裝（Ubuntu + nginx + PHP-FPM）
 
 ```bash
+sudo apt-get install -y nginx php-fpm php-sqlite3 rsync git
+sudo git clone https://github.com/CCNDA/it.ccra.tw.git /opt/it.ccra.tw
 sudo install -d /var/www/it.ccra.tw /var/www/it-lib
-sudo cp -r site/* /var/www/it.ccra.tw/
-sudo cp lib/access.php /var/www/it-lib/
 sudo install -d -m 750 -o www-data -g www-data /var/lib/it-ccra
-sudo apt-get install -y php8.3-fpm php8.3-sqlite3
-sudo cp deploy/cloudflare-only.conf /etc/nginx/snippets/
-sudo cp deploy/nginx-it.ccra.tw.conf /etc/nginx/sites-available/it.ccra.tw
 sudo ln -s /etc/nginx/sites-available/it.ccra.tw /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
+sudo cp /opt/it.ccra.tw/deploy/it-ccra-deploy.{service,timer} /etc/systemd/system/
+sudo /opt/it.ccra.tw/deploy/deploy.sh --force
+sudo systemctl enable --now it-ccra-deploy.timer
 ```
 
-`lib/access.php` 裡的 `ACCESS_TEAM`、`ACCESS_AUD` 要換成自己 Cloudflare Access 應用的值。Cloudflare IP 範圍會變動，請定期從 <https://www.cloudflare.com/ips/> 更新白名單。
+`lib/access.php` 裡的 `ACCESS_TEAM`、`ACCESS_AUD` 要換成自己 Cloudflare Access 應用的值。Tunnel 的 ingress 設定為 `it.ccra.tw → http://localhost:80`。
 
 ## 不在這裡的東西
 

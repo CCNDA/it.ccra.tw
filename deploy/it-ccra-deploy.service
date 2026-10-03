@@ -1,0 +1,7 @@
+[Unit]
+Description=Deploy it.ccra.tw from GitHub (main)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/it.ccra.tw/deploy/deploy.sh
