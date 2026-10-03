@@ -12,7 +12,7 @@ import icalendar, recurring_ical_events
 STATE = "/var/lib/it-ccra"
 OUT = os.path.join(STATE, "ccnda_busy.json")
 TZ = dt.timezone(dt.timedelta(hours=8))   # 台北
-DAYS = 30
+DAYS = 100
 
 url = open(os.path.join(STATE, "ccnda-ics.url"), encoding="utf-8-sig").read().strip()
 try:
