@@ -2,6 +2,7 @@
 // it.ccra.tw：驗證 Cloudflare Access 登入憑證（Cf-Access-Jwt-Assertion）。
 // 2026-10-03 IT大蘇建立。主機已只放行 Cloudflare IP，但別人的 Cloudflare 區域也能指向本機 IP
 // 並自帶標頭，所以 Cloudflare 官方要求在來源端驗 JWT 簽章與 AUD，不能只信 email 標頭。
+date_default_timezone_set('Asia/Taipei');  // 頁面與申請紀錄的時間一律台北時間
 const ACCESS_TEAM = 'https://maryonacross.cloudflareaccess.com';
 const ACCESS_AUD  = '8fb099ab6feed72ee36eeaf4f5bdc58a6fc6b7d5dd1f26219198fdfb8eacdf92';
 const STATE_DIR   = '/var/lib/it-ccra';
