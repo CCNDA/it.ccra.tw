@@ -62,7 +62,7 @@ textarea{min-height:80px}
 <main class="wrap">
 <div class="panel">
   <h1>資訊部咖啡廳</h1>
-  <p class="d">資訊部在 Teams 上的共用頻道，每天中午一則信仰分享：當天的讀經、一段默想，偶爾聊聊資訊工具。想一起來坐坐，按下面申請，頻道管理者會把你加進來。</p>
+  <p class="d">資訊部在 Teams 上的共用頻道：想找資訊部同仁討論事情，或是一起靈修，都歡迎進來坐坐。按下面申請，頻道管理者會把你加進來。</p>
 <?php if ($asked || isset($_GET['sent'])): ?>
   <p><b>已收到你的申請</b><?= $asked ? '（' . h(substr($asked, 0, 10)) . '）' : '' ?>。加入後 Teams 左側「資訊部」團隊底下會出現「資訊部咖啡廳」。</p>
   <p><a class="btn ghost" href="/">回首頁</a></p>
