@@ -174,10 +174,3 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 .quick a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 @media (max-width:420px){.quick{grid-template-columns:repeat(2,1fr)}}
 @media (prefers-reduced-motion:reduce){.quick a{transition:none}}
-
-/* 非 Edge 提示（edgetip.js；頁首下方一條細提示，不浮在內容上，可關閉） */
-.edgetip{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 0;padding:7px 8px 7px 14px;border-radius:12px;border:1px dashed var(--edge);background:color-mix(in srgb,var(--panel) 70%,transparent);font-size:13.5px;line-height:1.5;color:var(--ink-2)}
-.edgetip a{color:var(--ink);font-weight:800}
-.edgetip button{flex:none;border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:2px 6px;border-radius:6px}
-.edgetip button:hover{color:var(--ink)}
-.edgetip button:focus-visible{outline:2px solid var(--focus)}

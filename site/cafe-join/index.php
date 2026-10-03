@@ -51,7 +51,6 @@ $asked = $st->fetchColumn();
 <link rel="stylesheet" href="/assets/site.css?v=dev">
 <link rel="stylesheet" href="/assets/form.css?v=dev">
 <script src="/assets/whoami.js?v=dev" defer></script>
-<script src="/assets/edgetip.js?v=dev" defer></script>
 </head>
 <body>
 <!-- 版型與「與資訊部主任有約」統一（熊哥 10-04） -->
