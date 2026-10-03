@@ -18,17 +18,21 @@ $csrf = hash_hmac('sha256', $email . date('Y-m-d'), $secret);
 function h($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 $err = []; $done = false;
 // 熊哥 10-04：「想用來做什麼」不要選項，直接用文字方塊寫使用計畫（存進 uses 欄，通知信沿用）
-$v = ['name' => $who['name'], 'dept' => $who['dept'], 'plan' => '', 'why' => '', 'pii' => ''];
+// 熊哥 10-04：工具可選 Claude、ChatGPT、Codex（Codex 隨 ChatGPT 帳號一起開），可複選；名稱一律叫「AI 工具」不綁品牌
+$TOOLS = ['Claude' => '長文件分析、多份文件比對、交回檔案', 'ChatGPT' => '日常問答、圖片、語音對話', 'Codex' => '寫程式、改程式（隨 ChatGPT 帳號一起開）'];
+$v = ['name' => $who['name'], 'dept' => $who['dept'], 'tools' => [], 'plan' => '', 'why' => '', 'pii' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($csrf, $_POST['csrf'] ?? '')) $err[] = '頁面已過期，請重新整理後再送出。';
     $v['name']  = trim($_POST['name'] ?? '');
     $v['dept']  = $_POST['dept'] ?? '';
+    $v['tools'] = array_values(array_intersect(array_keys($TOOLS), (array)($_POST['tools'] ?? [])));
     $v['plan']  = trim($_POST['plan'] ?? '');
     $v['why']   = trim($_POST['why'] ?? '');
     $v['pii']   = $_POST['pii'] ?? '';
     if ($v['name'] === '' || mb_strlen($v['name']) > 50) $err[] = '請填寫姓名。';
     if (!in_array($v['dept'], $DEPTS, true)) $err[] = '請選擇部門。';
+    if (!$v['tools']) $err[] = '請選擇要申請的工具。';
     if ($v['plan'] === '' || mb_strlen($v['plan']) > 2000) $err[] = '請寫下使用計畫（2000 字內）。';
     if ($v['why'] === '' || mb_strlen($v['why']) > 2000) $err[] = '請簡述為什麼 Copilot Chat 不夠用（2000 字內）。';
     if (!in_array($v['pii'], ['不會', '會'], true)) $err[] = '請選擇是否處理個資。';
@@ -36,9 +40,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db = new PDO('sqlite:' . STATE_DIR . '/ai_apply.sqlite');
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->exec('CREATE TABLE IF NOT EXISTS ai_apply (id INTEGER PRIMARY KEY, created_at TEXT, email TEXT, name TEXT, dept TEXT, uses TEXT, why TEXT, pii TEXT, notified_at TEXT)');
-        $uses = $v['plan'];
-        $st = $db->prepare('INSERT INTO ai_apply (created_at,email,name,dept,uses,why,pii) VALUES (?,?,?,?,?,?,?)');
-        $st->execute([date('c'), $email, $v['name'], $v['dept'], $uses, $v['why'], $v['pii']]);
+        $cols = array_column($db->query('PRAGMA table_info(ai_apply)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+        if (!in_array('tools', $cols, true)) $db->exec('ALTER TABLE ai_apply ADD COLUMN tools TEXT');
+        $st = $db->prepare('INSERT INTO ai_apply (created_at,email,name,dept,tools,uses,why,pii) VALUES (?,?,?,?,?,?,?,?)');
+        $st->execute([date('c'), $email, $v['name'], $v['dept'], implode('、', $v['tools']), $v['plan'], $v['why'], $v['pii']]);
         $done = true;
     }
 }
@@ -56,6 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <style>
 .errs{margin:12px 0 0;padding-left:20px}
 .ro{margin:0;color:var(--ink-2)}
+.tools .pill span{flex-direction:column;align-items:flex-start;gap:2px;border-radius:18px;padding:10px 16px}
+.tools .pill small{font-weight:500;font-size:13px;color:var(--muted)}
 </style>
 <script src="/assets/whoami.js?v=dev" defer></script>
 </head>
@@ -71,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <main class="wrap">
   <div class="hero">
     <div class="pic"><img src="/img/itsu-avatar.webp" alt=""></div>
-    <div><h1><?= h($v['name'] !== '' ? preg_replace('/^\d{3}-/', '', $v['name']) . '，' : '') ?>平安！想申請 AI 工具嗎？</h1><p>先看看 Copilot Chat 夠不夠用；不夠的話填下面，資訊部審核後會寄信通知你。</p></div>
+    <div><h1><?= h($v['name'] !== '' ? preg_replace('/^\d{3}-/', '', $v['name']) . '，' : '') ?>平安！想申請 AI 工具嗎？</h1><p>先看看 Copilot Chat 夠不夠用；不夠的話選工具、寫使用計畫，資訊部審核後寄信通知你。</p></div>
   </div>
 <?php if ($done): ?>
   <div class="box yay">
@@ -84,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php else: ?>
   <div class="box note">
     <p class="step"><b>1</b>申請前先確認</p>
-    <p style="margin:0">用公司帳號登入 <a href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener">M365 Copilot Chat</a>，逐字稿整理、摘要、文案初稿、翻譯、潤稿、影片腳本、生成圖片都已經可以做，<b>不需要申請</b>。<br>需要它交回檔案、一次比對多份文件、或長篇來回分析，才需要申請 Claude。</p>
+    <p style="margin:0">用公司帳號登入 <a href="https://m365.cloud.microsoft/chat" target="_blank" rel="noopener">M365 Copilot Chat</a>，逐字稿整理、摘要、文案初稿、翻譯、潤稿、影片腳本、生成圖片都已經可以做，<b>不需要申請</b>。<br>需要它交回檔案、一次比對多份文件、或長篇來回分析，或要寫程式，才需要申請 Claude、ChatGPT 或 Codex。</p>
   </div>
   <?php if ($err): ?><div class="box"><ul class="errs err"><?php foreach ($err as $e) echo '<li>' . h($e) . '</li>'; ?></ul></div><?php endif; ?>
   <form method="post">
@@ -103,8 +110,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </select>
     </div>
     <div class="box">
-      <p class="step"><b>3</b>使用計畫</p>
-      <label class="q" for="plan" style="margin-top:0">想用 Claude 做什麼？</label>
+      <p class="step"><b>3</b>想申請哪一個？（可複選）</p>
+      <div class="pills tools">
+        <?php foreach ($TOOLS as $t => $desc): ?>
+          <label class="pill"><input type="checkbox" name="tools[]" value="<?= h($t) ?>"<?= in_array($t, $v['tools'], true) ? ' checked' : '' ?>><span><b><?= h($t) ?></b><small><?= h($desc) ?></small></span></label>
+        <?php endforeach; ?>
+      </div>
+      <label class="q" for="plan">使用計畫</label>
       <p class="hint" style="margin:0 0 6px">寫下要處理的工作、大概多久用一次、希望它交出什麼成果</p>
       <textarea id="plan" name="plan" maxlength="2000" required style="min-height:140px" placeholder="例：每週把會議錄音逐字稿整理成重點紀錄與待辦清單，並比對上週紀錄追蹤進度"><?= h($v['plan']) ?></textarea>
       <label class="q" for="why">為什麼 Copilot Chat 不夠用？</label>
