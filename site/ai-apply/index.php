@@ -10,7 +10,6 @@ $DEPTS[] = '其他';
 // 登入者的姓名／部門預選（熊哥 10-03：依顯示名稱前的編號判斷，沒編號放其他）。對照表由 IT大蘇本機 it_dept_map.py 產生。
 $who = (json_decode((string)@file_get_contents(STATE_DIR . '/dept_map.json'), true) ?: [])[$email] ?? ['name' => '', 'dept' => ''];
 if ($who['dept'] !== '' && !in_array($who['dept'], $DEPTS, true)) array_splice($DEPTS, -1, 0, [$who['dept']]);
-$USES  = ['逐字稿整理','新聞稿與文案撰寫','影片腳本與分鏡','跨語言翻譯','統計資料整理','其他'];
 
 $secret = trim((string)@file_get_contents(STATE_DIR . '/form_secret'));
 if ($secret === '') { $secret = bin2hex(random_bytes(32)); file_put_contents(STATE_DIR . '/form_secret', $secret); }
@@ -18,27 +17,26 @@ $csrf = hash_hmac('sha256', $email . date('Y-m-d'), $secret);
 
 function h($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 $err = []; $done = false;
-$v = ['name' => $who['name'], 'dept' => $who['dept'], 'uses' => [], 'other' => '', 'why' => '', 'pii' => ''];
+// 熊哥 10-04：「想用來做什麼」不要選項，直接用文字方塊寫使用計畫（存進 uses 欄，通知信沿用）
+$v = ['name' => $who['name'], 'dept' => $who['dept'], 'plan' => '', 'why' => '', 'pii' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($csrf, $_POST['csrf'] ?? '')) $err[] = '頁面已過期，請重新整理後再送出。';
     $v['name']  = trim($_POST['name'] ?? '');
     $v['dept']  = $_POST['dept'] ?? '';
-    $v['uses']  = array_values(array_intersect($USES, (array)($_POST['uses'] ?? [])));
-    $v['other'] = trim($_POST['other'] ?? '');
+    $v['plan']  = trim($_POST['plan'] ?? '');
     $v['why']   = trim($_POST['why'] ?? '');
     $v['pii']   = $_POST['pii'] ?? '';
     if ($v['name'] === '' || mb_strlen($v['name']) > 50) $err[] = '請填寫姓名。';
     if (!in_array($v['dept'], $DEPTS, true)) $err[] = '請選擇部門。';
-    if (!$v['uses']) $err[] = '請至少勾選一項預計使用方式。';
-    if (in_array('其他', $v['uses'], true) && $v['other'] === '') $err[] = '勾選「其他」請簡述用途。';
+    if ($v['plan'] === '' || mb_strlen($v['plan']) > 2000) $err[] = '請寫下使用計畫（2000 字內）。';
     if ($v['why'] === '' || mb_strlen($v['why']) > 2000) $err[] = '請簡述為什麼 Copilot Chat 不夠用（2000 字內）。';
     if (!in_array($v['pii'], ['不會', '會'], true)) $err[] = '請選擇是否處理個資。';
     if (!$err) {
         $db = new PDO('sqlite:' . STATE_DIR . '/ai_apply.sqlite');
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->exec('CREATE TABLE IF NOT EXISTS ai_apply (id INTEGER PRIMARY KEY, created_at TEXT, email TEXT, name TEXT, dept TEXT, uses TEXT, why TEXT, pii TEXT, notified_at TEXT)');
-        $uses = implode('、', $v['uses']) . ($v['other'] !== '' ? '（其他：' . $v['other'] . '）' : '');
+        $uses = $v['plan'];
         $st = $db->prepare('INSERT INTO ai_apply (created_at,email,name,dept,uses,why,pii) VALUES (?,?,?,?,?,?,?)');
         $st->execute([date('c'), $email, $v['name'], $v['dept'], $uses, $v['why'], $v['pii']]);
         $done = true;
@@ -58,7 +56,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <style>
 .errs{margin:12px 0 0;padding-left:20px}
 .ro{margin:0;color:var(--ink-2)}
-#other{margin-top:10px}
 </style>
 <script src="/assets/whoami.js?v=dev" defer></script>
 </head>
@@ -106,13 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </select>
     </div>
     <div class="box">
-      <p class="step"><b>3</b>想用來做什麼（可複選）</p>
-      <div class="pills">
-        <?php foreach ($USES as $u): ?>
-          <label class="pill"><input type="checkbox" name="uses[]" value="<?= h($u) ?>"<?= in_array($u, $v['uses'], true) ? ' checked' : '' ?>><span><?= h($u) ?></span></label>
-        <?php endforeach; ?>
-      </div>
-      <input type="text" id="other" name="other" maxlength="200" placeholder="勾選「其他」請簡述" value="<?= h($v['other']) ?>">
+      <p class="step"><b>3</b>使用計畫</p>
+      <label class="q" for="plan" style="margin-top:0">想用 Claude 做什麼？</label>
+      <p class="hint" style="margin:0 0 6px">寫下要處理的工作、大概多久用一次、希望它交出什麼成果</p>
+      <textarea id="plan" name="plan" maxlength="2000" required style="min-height:140px" placeholder="例：每週把會議錄音逐字稿整理成重點紀錄與待辦清單，並比對上週紀錄追蹤進度"><?= h($v['plan']) ?></textarea>
       <label class="q" for="why">為什麼 Copilot Chat 不夠用？</label>
       <p class="hint" style="margin:0 0 6px">簡述你的工作內容與卡住的地方</p>
       <textarea id="why" name="why" maxlength="2000" required style="min-height:120px"><?= h($v['why']) ?></textarea>
