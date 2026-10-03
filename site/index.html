@@ -85,7 +85,7 @@
     </a>
   </section>
 
-  <section class="uncle-sec">
+  <section class="uncle-sec ask">
     <div class="uncle">
       <img class="av" src="/img/itsu-avatar.webp" alt="" width="56" height="56">
       <div class="txt">
@@ -97,10 +97,17 @@
         <a class="btn ghost" href="mailto:ituncle@ccra.org.tw?subject=%E8%B3%87%E8%A8%8A%E5%95%8F%E9%A1%8C">寫信給大蘇</a>
       </div>
     </div>
+<!-- 互動大蘇：電腦版站在「有問題？」框右側（熊哥 10-03），手機與窄螢幕不出現（熊哥 10-03：要有互動感，手機版不用） -->
+<div class="itsu" aria-live="polite">
+  <div class="itsu-say" id="itsu-say" hidden></div>
+  <button class="itsu-btn" id="itsu-btn" type="button" aria-label="跟大蘇打招呼">
+    <img src="/img/itsu-wave.webp" alt="資訊部大蘇" width="383" height="600">
+  </button>
+</div>
   </section>
 
   <footer>
-    <p class="motto">當你感覺不到資訊部的存在，才是資訊部<em>真正存在的價值</em>。<br>但別忘了，每一個理所當然，都是有人默默付出代價。</p>
+    <p class="motto"><span>當你感覺不到資訊部的存在，</span><span>才是資訊部<em>真正存在的價值</em>。</span><br><span>但別忘了，</span><span>每一個理所當然，</span><span>都是有人默默付出代價。</span></p>
     <p class="sign">中華基督教救助協會　資訊部</p>
   </footer>
 </main>
@@ -111,13 +118,6 @@ fetch('/cdn-cgi/access/get-identity').then(function (r) { return r.json(); }).th
 }).catch(function () {});
 </script>
 
-<!-- 互動大蘇：只在電腦版、右側空白處出現，不壓到內容（熊哥 10-03：要有互動感，手機版不用） -->
-<div class="itsu" aria-live="polite">
-  <div class="itsu-say" id="itsu-say" hidden></div>
-  <button class="itsu-btn" id="itsu-btn" type="button" aria-label="跟大蘇打招呼">
-    <img src="/img/itsu-wave.webp" alt="資訊部大蘇" width="383" height="600">
-  </button>
-</div>
 <script>
 (function () {
   var btn = document.getElementById('itsu-btn'), say = document.getElementById('itsu-say'), i = -1, name = '';
