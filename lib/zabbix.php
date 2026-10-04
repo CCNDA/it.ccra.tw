@@ -26,7 +26,7 @@ function zabbix_hosts() {
         $probs = zbx_call('problem.get', ['hostids' => $ids, 'output' => ['eventid', 'name', 'severity', 'clock', 'objectid'],
             'recent' => false, 'suppressed' => false, 'sortfield' => ['eventid'], 'sortorder' => 'DESC'], $token);
         $trig = $probs ? zbx_call('trigger.get', ['triggerids' => array_column($probs, 'objectid'), 'output' => ['triggerid'],
-            'selectHosts' => ['hostid']], $token) : [];
+            'selectHosts' => ['hostid'], 'monitored' => true], $token) : [];   // 只算啟用中的觸發器；手動停用的（例如誤報）不列
         $t2h = [];
         foreach ($trig as $t) $t2h[$t['triggerid']] = $t['hosts'][0]['hostid'] ?? null;
         $out = [];
