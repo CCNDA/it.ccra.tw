@@ -174,3 +174,8 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 .quick a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 @media (max-width:420px){.quick{grid-template-columns:repeat(2,1fr)}}
 @media (prefers-reduced-motion:reduce){.quick a{transition:none}}
+
+/* 戰情室捷徑（只有資訊部帳號會出現，whoami.js 產生） */
+.bar a.ops-link{margin-left:auto;display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;border:1px solid var(--edge);background:var(--panel);color:var(--ink);font-weight:800;font-size:13.5px;text-decoration:none;white-space:nowrap}
+.bar a.ops-link:hover{border-color:var(--green)}
+@media (max-width:640px){.bar a.ops-link{padding:6px 9px;font-size:12.5px}}

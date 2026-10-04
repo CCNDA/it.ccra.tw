@@ -1,0 +1,186 @@
+<?php
+// 資訊部戰情室：只有資訊部帳號進得來，集中看各項申請並直接處置。
+// 熊哥 2026-10-04 TG：「資訊部的帳號要多一個戰情室，專門處理申請事項的情報和處置」。
+// 這台主機不寄信：報修改狀態只寫進資料庫，通知信由 IT大蘇本機 repair_notify.py 每小時補寄（先記後寄）。
+require '/var/www/it-lib/access.php';
+require '/var/www/it-lib/itstaff.php';
+$id = access_identity();
+$email = strtolower($id['email']);
+if (!is_it_staff($email)) { http_response_code(403); exit('戰情室只開放給資訊部帳號。'); }
+$me = IT_STAFF[$email];
+
+function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+function db($name) {
+    $d = new PDO('sqlite:' . STATE_DIR . '/' . $name);
+    $d->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    return $d;
+}
+function rows($name, $sql, $a = []) {
+    if (!is_file(STATE_DIR . '/' . $name)) return [];
+    $s = db($name)->prepare($sql); $s->execute($a); return $s->fetchAll(PDO::FETCH_ASSOC);
+}
+function ticket_no($r) { return 'R' . date('ymd', strtotime($r['created_at'])) . '-' . str_pad((string)$r['id'], 3, '0', STR_PAD_LEFT); }
+function ago($t) {
+    $s = time() - strtotime($t);
+    if ($s < 3600) return max(1, intdiv($s, 60)) . ' 分鐘前';
+    if ($s < 86400) return intdiv($s, 3600) . ' 小時前';
+    return intdiv($s, 86400) . ' 天前';
+}
+$secret = trim((string)@file_get_contents(STATE_DIR . '/form_secret'));
+$csrf = hash_hmac('sha256', 'ops' . $email . date('Y-m-d'), $secret);
+
+const URG = ['low' => ['不急', 'low'], 'mid' => ['影響工作', 'mid'], 'high' => ['無法工作', 'high']];
+const RST = ['new' => '待處理', 'doing' => '處理中', 'done' => '已完成'];
+
+// ── 處置：報修改狀態 ──
+$flash = '';
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    if (!hash_equals($csrf, $_POST['csrf'] ?? '')) $flash = '頁面已過期，請重新整理。';
+    elseif (($_POST['act'] ?? '') === 'repair') {
+        $rid = (int)($_POST['id'] ?? 0); $st = $_POST['status'] ?? ''; $note = mb_substr(trim($_POST['note'] ?? ''), 0, 300);
+        if (isset(RST[$st]) && $st !== 'new') {
+            $d = db('repair.sqlite');
+            $cols = array_column($d->query('PRAGMA table_info(repair)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+            foreach (['handler', 'status_notified_at'] as $c) if (!in_array($c, $cols, true)) $d->exec("ALTER TABLE repair ADD COLUMN $c TEXT");
+            $d->prepare('UPDATE repair SET status = ?, note = ?, handler = ?, updated_at = ?, status_notified_at = NULL WHERE id = ?')
+              ->execute([$st, $note, $me, date('c'), $rid]);
+            $flash = '已更新，同工會在一小時內收到通知信。';
+        }
+    }
+    header('Location: ./?m=' . urlencode($flash) . '#repair', true, 303);
+    exit;
+}
+$flash = (string)($_GET['m'] ?? '');
+
+// ── 情報 ──
+$repairs = rows('repair.sqlite', "SELECT * FROM repair ORDER BY CASE status WHEN 'new' THEN 0 WHEN 'doing' THEN 1 ELSE 2 END, CASE urgency WHEN 'high' THEN 0 WHEN 'mid' THEN 1 ELSE 2 END, id DESC LIMIT 60");
+$openRep = array_filter($repairs, fn($r) => $r['status'] !== 'done');
+$ai = rows('ai_apply.sqlite', 'SELECT * FROM ai_apply ORDER BY id DESC LIMIT 30');
+$members = json_decode((string)@file_get_contents(STATE_DIR . '/cafe_members.json'), true) ?: [];
+$cafe = rows('cafe_join.sqlite', 'SELECT * FROM cafe_join ORDER BY id DESC LIMIT 30');
+$cafePending = array_filter($cafe, fn($r) => !in_array(strtolower($r['email']), $members, true));
+$meets = rows('meet.sqlite', 'SELECT * FROM meet WHERE start >= ? ORDER BY start LIMIT 30', [date('c', strtotime('today'))]);
+$wd = ['日', '一', '二', '三', '四', '五', '六'];
+?>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>戰情室｜CCRA 資訊服務</title>
+<link rel="icon" href="/img/logo.png">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css?v=dev">
+<link rel="stylesheet" href="/assets/form.css?v=dev">
+<script src="/assets/whoami.js?v=dev" defer></script>
+<style>
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
+@media (max-width:720px){.kpi{grid-template-columns:repeat(2,1fr)}}
+.kpi a{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--edge);border-radius:18px;padding:14px 16px;box-shadow:var(--glow)}
+.kpi b{display:block;font-size:30px;font-weight:900;line-height:1.1}
+.kpi span{color:var(--muted);font-size:13.5px}
+.kpi .hot b{color:var(--red)}
+.sec{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}
+.sec h2{margin:0;font-size:18px}
+.sec small{color:var(--muted)}
+.item{border-top:1px solid var(--edge);padding:12px 0}
+.item:first-of-type{border-top:0}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.no{font:500 12.5px/1 "IBM Plex Mono",ui-monospace,monospace;color:var(--muted)}
+.tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:800;background:var(--cream);border:1px solid var(--edge)}
+.tag.high{background:color-mix(in srgb,var(--red) 16%,var(--panel));color:var(--red);border-color:transparent}
+.tag.mid{background:color-mix(in srgb,var(--yellow) 22%,var(--panel));border-color:transparent}
+.tag.new{background:var(--mist);color:var(--teal-d);border-color:transparent}
+.tag.doing{background:color-mix(in srgb,var(--yellow) 22%,var(--panel));border-color:transparent}
+.tag.done{background:color-mix(in srgb,var(--green) 16%,var(--panel));color:var(--green);border-color:transparent}
+.ttl{font-weight:800}
+.meta{color:var(--muted);font-size:13px;margin-top:3px}
+.desc{margin:6px 0 0;font-size:14px;color:var(--ink-2);white-space:pre-wrap}
+.act{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.act input[type=text]{flex:1 1 220px;padding:7px 10px;border-radius:10px;font-size:14px}
+.act button{border:1px solid var(--edge);background:var(--cream);border-radius:10px;padding:7px 12px;font:800 13.5px/1 "Noto Sans TC",sans-serif;cursor:pointer;color:var(--ink)}
+.act button.ok{background:var(--teal);border-color:var(--teal);color:#fff}
+.shots a{font-size:13px;margin-right:8px}
+.flash{background:var(--mist);border-radius:12px;padding:8px 12px;margin-top:14px;font-weight:700}
+details summary{cursor:pointer;color:var(--muted);font-size:14px;margin-top:8px}
+.empty{color:var(--muted);margin:0}
+</style>
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none"><img class="mark" src="/img/logo.png" alt="CCRA 資訊服務首頁">
+  <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
+  <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
+  <span class="sep" aria-hidden="true"></span>
+  <div class="title">戰情室<small>IT Ops Room</small></div>
+</div></header>
+<main class="wrap">
+  <div class="hero">
+    <div class="pic">🛰️</div>
+    <div><h1><?= h($me) ?>，平安！今天的戰況</h1><p>只有資訊部帳號看得到。報修改狀態後，系統會寄信通知同工。</p></div>
+  </div>
+  <?php if ($flash): ?><p class="flash"><?= h($flash) ?></p><?php endif; ?>
+  <div class="kpi">
+    <a href="#repair" class="<?= count(array_filter($openRep, fn($r) => $r['status'] === 'new')) ? 'hot' : '' ?>"><b><?= count(array_filter($openRep, fn($r) => $r['status'] === 'new')) ?></b><span>報修待處理</span></a>
+    <a href="#repair"><b><?= count(array_filter($openRep, fn($r) => $r['status'] === 'doing')) ?></b><span>報修處理中</span></a>
+    <a href="#cafe"><b><?= count($cafePending) ?></b><span>咖啡廳待加入</span></a>
+    <a href="#meet"><b><?= count($meets) ?></b><span>主任有約（今天起）</span></a>
+  </div>
+
+  <div class="box" id="repair">
+    <div class="sec"><h2>🛠️ 資訊報修</h2><small>未完成在前，越急越前面</small></div>
+    <?php if (!$repairs): ?><p class="empty">目前沒有報修。</p><?php endif; ?>
+    <?php foreach ($repairs as $r): $files = json_decode($r['files'] ?: '[]', true); ?>
+      <div class="item">
+        <div class="row"><span class="no"><?= h(ticket_no($r)) ?></span>
+          <span class="tag <?= h($r['status']) ?>"><?= h(RST[$r['status']] ?? $r['status']) ?></span>
+          <span class="tag <?= h(URG[$r['urgency']][1] ?? '') ?>"><?= h(URG[$r['urgency']][0] ?? $r['urgency']) ?></span>
+          <span class="tag"><?= h($r['category']) ?></span>
+          <span class="ttl"><?= h($r['summary']) ?></span></div>
+        <div class="meta"><?= h($r['name']) ?>（<?= h($r['dept']) ?>）<?= $r['place'] ? '｜' . h($r['place']) : '' ?><?= $r['contact'] ? '｜' . h($r['contact']) : '' ?>｜<?= $r['remote_ok'] ? '可遠端' : '不要遠端' ?>｜<?= h(ago($r['created_at'])) ?><?= !empty($r['handler']) ? '｜經手：' . h($r['handler']) : '' ?></div>
+        <?php if ($r['detail']): ?><p class="desc"><?= h($r['detail']) ?></p><?php endif; ?>
+        <?php if ($files): ?><div class="shots"><?php foreach ($files as $i => $f): ?><a href="/repair/file.php?f=<?= h($f) ?>" target="_blank" rel="noopener">截圖 <?= $i + 1 ?></a><?php endforeach; ?></div><?php endif; ?>
+        <?php if ($r['note']): ?><div class="meta">處理說明：<?= h($r['note']) ?></div><?php endif; ?>
+        <?php if ($r['status'] !== 'done'): ?>
+        <form method="post" class="act">
+          <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="repair"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+          <input type="text" name="note" maxlength="300" placeholder="給同工的一句話（會寫進通知信）" value="<?= h($r['note']) ?>">
+          <?php if ($r['status'] === 'new'): ?><button name="status" value="doing">接手・處理中</button><?php endif; ?>
+          <button name="status" value="done" class="ok">已完成</button>
+        </form>
+        <?php endif; ?>
+      </div>
+    <?php endforeach; ?>
+  </div>
+
+  <div class="box" id="ai">
+    <div class="sec"><h2>✨ AI 工具使用申請</h2><small>審核由熊哥回信核准；申請人已收到確認信</small></div>
+    <?php if (!$ai): ?><p class="empty">目前沒有申請。</p><?php endif; ?>
+    <?php foreach ($ai as $r): ?>
+      <div class="item">
+        <div class="row"><span class="tag"><?= h($r['tools'] ?? 'Claude') ?></span><span class="ttl"><?= h($r['name']) ?></span><span class="meta" style="margin:0">（<?= h($r['dept']) ?>）<?= h($r['email']) ?>｜<?= h(ago($r['created_at'])) ?>｜個資：<?= h($r['pii']) ?></span></div>
+        <details><summary>使用計畫與理由</summary><p class="desc"><b>使用計畫</b>：<?= h($r['uses']) ?></p><p class="desc"><b>為什麼 Copilot 不夠用</b>：<?= h($r['why']) ?></p></details>
+      </div>
+    <?php endforeach; ?>
+  </div>
+
+  <div class="box" id="cafe">
+    <div class="sec"><h2>☕ 咖啡廳加入申請</h2><small>在 Teams 加入頻道後，這裡會自動變成「已加入」</small></div>
+    <?php if (!$cafe): ?><p class="empty">目前沒有申請。</p><?php endif; ?>
+    <?php foreach ($cafe as $r): $in = in_array(strtolower($r['email']), $members, true); ?>
+      <div class="item"><div class="row"><span class="tag <?= $in ? 'done' : 'new' ?>"><?= $in ? '已加入' : '待加入' ?></span><span class="ttl"><?= h($r['name']) ?></span><span class="meta" style="margin:0">（<?= h($r['dept']) ?>）<?= h($r['email']) ?>｜<?= h(ago($r['created_at'])) ?></span></div>
+      <?php if ($r['note']): ?><p class="desc"><?= h($r['note']) ?></p><?php endif; ?></div>
+    <?php endforeach; ?>
+  </div>
+
+  <div class="box" id="meet">
+    <div class="sec"><h2>📅 與資訊部主任有約</h2><small>今天起的預約</small></div>
+    <?php if (!$meets): ?><p class="empty">目前沒有預約。</p><?php endif; ?>
+    <?php foreach ($meets as $r): $s = strtotime($r['start']); ?>
+      <div class="item"><div class="row"><span class="no"><?= h(date('n/j', $s)) ?>（<?= $wd[(int)date('w', $s)] ?>）<?= h(date('H:i', $s)) ?></span><span class="ttl"><?= h($r['name']) ?></span><span class="meta" style="margin:0"><?= h($r['topic']) ?>｜<?= h($r['mode']) ?></span></div></div>
+    <?php endforeach; ?>
+  </div>
+</main>
+</body>
+</html>
