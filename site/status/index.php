@@ -1,5 +1,5 @@
 <?php
-// 網站狀況儀表板（熊哥 10-04：UptimeRobot 是網站監控，改名避免與 Zabbix 主機監控混淆）：讀 UptimeRobot API（唯讀金鑰，只在主機端使用，不送到瀏覽器）。
+// 網站監控儀表板（熊哥 10-04：UptimeRobot 是網站監控，改名避免與 Zabbix 主機監控混淆）：讀 UptimeRobot API（唯讀金鑰，只在主機端使用，不送到瀏覽器）。
 // 金鑰放 /var/lib/it-ccra/uptimerobot-readonly.key（網站根目錄外、www-data 640），不進 GitHub。
 // API 結果快取 60 秒，避免每次開頁都打 UptimeRobot（免費方案有呼叫頻率限制）。
 require '/var/www/it-lib/access.php';
@@ -27,7 +27,7 @@ foreach ($mons as $m) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="120">
-<title>網站狀況｜CCRA 資訊服務</title>
+<title>網站監控｜CCRA 資訊服務</title>
 <link rel="icon" href="/img/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css?v=dev">
@@ -61,7 +61,7 @@ foreach ($mons as $m) {
   <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
   <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
   <span class="sep" aria-hidden="true"></span>
-  <div class="title">網站狀況<small>Website uptime</small></div>
+  <div class="title">網站監控<small>Website uptime</small></div>
 </div></header>
 <main class="wrap">
   <div class="sum">

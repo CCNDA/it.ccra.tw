@@ -79,7 +79,7 @@ $cafe = rows('cafe_join.sqlite', 'SELECT * FROM cafe_join ORDER BY id DESC LIMIT
 $cafePending = array_filter($cafe, fn($r) => !in_array(strtolower($r['email']), $members, true));
 $meets = rows('meet.sqlite', 'SELECT * FROM meet WHERE start >= ? ORDER BY start LIMIT 30', [date('c', strtotime('today'))]);
 $wd = ['日', '一', '二', '三', '四', '五', '六'];
-// 網站狀況摘要（UptimeRobot；熊哥 10-04：戰情室也要顯示，詳情再進網站狀況頁）
+// 網站監控摘要（UptimeRobot；熊哥 10-04：戰情室也要顯示，詳情再進網站監控頁）
 [$up, $upErr] = uptime_data();
 $mons = $up['monitors'] ?? [];
 $bad = array_values(array_filter($mons, fn($m) => in_array((int)$m['status'], [8, 9], true)));
@@ -175,7 +175,7 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
   </div>
 
   <a class="box hostbox <?= $bad ? 'bad' : 'good' ?>" href="/status/" id="hosts">
-    <div class="sec" style="margin:0"><h2><?= $bad ? '🔴' : '🟢' ?> 網站狀況</h2><small><?= $up ? '更新於 ' . h(date('H:i', $up['at'])) : '' ?>　點這裡看詳情 →</small></div>
+    <div class="sec" style="margin:0"><h2><?= $bad ? '🔴' : '🟢' ?> 網站監控</h2><small><?= $up ? '更新於 ' . h(date('H:i', $up['at'])) : '' ?>　點這裡看詳情 →</small></div>
     <?php if (!$up): ?><p class="err"><?= h($upErr) ?></p>
     <?php else: ?>
       <p class="hostsum"><b><?= $okN ?></b> 正常　<b class="<?= $bad ? 'red' : '' ?>"><?= count($bad) ?></b> 中斷／疑似中斷<?= $pauseN ? '　<b>' . $pauseN . '</b> 暫停監測' : '' ?></p>
