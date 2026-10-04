@@ -1,0 +1,223 @@
+<?php
+// 資訊報修單（熊哥 2026-10-04 TG：「資訊報修申請幫忙跟進製作」）。
+// 同工登入後填報修，送出即存 /var/lib/it-ccra/repair.sqlite；通知資訊部與確認信由 IT大蘇本機腳本 repair_notify.py 寄出（先記後寄）。
+// 截圖存在網站目錄外（STATE_DIR/repair_files），只有報修本人與資訊部看得到（file.php 檢查身分）。
+require '/var/www/it-lib/access.php';
+$id = access_identity();
+$email = strtolower($id['email']);
+$who = (json_decode((string)@file_get_contents(STATE_DIR . '/dept_map.json'), true) ?: [])[$email] ?? ['name' => '', 'dept' => ''];
+$DEPTS = require '/var/www/it-lib/depts.php';
+if ($who['dept'] !== '' && !in_array($who['dept'], $DEPTS, true)) array_splice($DEPTS, -1, 0, [$who['dept']]);
+
+const CATS = ['電腦／筆電', '網路／Wi-Fi', '印表機／影印機', '帳號／密碼／登入', 'Email／Outlook', 'Teams／M365', '軟體安裝／授權', '其他'];
+const URGENCY = ['low' => ['不急，有空再處理', '🌿'], 'mid' => ['影響工作，請盡快', '⏰'], 'high' => ['完全無法工作', '🚨']];
+const STATUS = ['new' => '已送出', 'doing' => '處理中', 'done' => '已完成'];
+const MAX_FILES = 3, MAX_BYTES = 5 * 1024 * 1024;
+$FILES_DIR = STATE_DIR . '/repair_files';
+
+function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+$secret = trim((string)@file_get_contents(STATE_DIR . '/form_secret'));
+$csrf = hash_hmac('sha256', 'repair' . $email . date('Y-m-d'), $secret);
+
+$db = new PDO('sqlite:' . STATE_DIR . '/repair.sqlite');
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$db->exec('CREATE TABLE IF NOT EXISTS repair (id INTEGER PRIMARY KEY, created_at TEXT, email TEXT, name TEXT, dept TEXT, place TEXT, contact TEXT,
+  category TEXT, urgency TEXT, summary TEXT, detail TEXT, remote_ok INTEGER, files TEXT, status TEXT DEFAULT "new", notified_at TEXT, updated_at TEXT, note TEXT)');
+
+$err = []; $done = null;
+$v = ['name' => $who['name'], 'dept' => $who['dept'], 'place' => '', 'contact' => '', 'category' => '', 'urgency' => 'mid', 'summary' => '', 'detail' => '', 'remote_ok' => 1];
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    if (!hash_equals($csrf, $_POST['csrf'] ?? '')) $err[] = '頁面已過期，請重新整理後再送出。';
+    foreach (['name', 'dept', 'place', 'contact', 'category', 'urgency', 'summary', 'detail'] as $k) $v[$k] = trim((string)($_POST[$k] ?? ''));
+    $v['remote_ok'] = isset($_POST['remote_ok']) ? 1 : 0;
+    if ($v['name'] === '' || mb_strlen($v['name']) > 50) $err[] = '請填寫姓名。';
+    if (!in_array($v['dept'], $DEPTS, true)) $err[] = '請選擇部門。';
+    if (!in_array($v['category'], CATS, true)) $err[] = '請選擇問題類別。';
+    if (!isset(URGENCY[$v['urgency']])) $err[] = '請選擇急迫程度。';
+    if ($v['summary'] === '' || mb_strlen($v['summary']) > 80) $err[] = '請用一句話寫出問題（80 字內）。';
+    if (mb_strlen($v['detail']) > 3000) $err[] = '詳細說明請在 3000 字內。';
+    if (mb_strlen($v['place']) > 80 || mb_strlen($v['contact']) > 80) $err[] = '地點與聯絡方式請各在 80 字內。';
+
+    // 截圖：最多 3 張、每張 5MB、只收圖片（用內容判斷，不信副檔名）
+    $imgs = [];
+    $up = $_FILES['shots'] ?? null;
+    if ($up && is_array($up['name'])) {
+        foreach ($up['name'] as $i => $n) {
+            if (($up['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) continue;
+            if (count($imgs) >= MAX_FILES) { $err[] = '截圖最多 3 張。'; break; }
+            if ($up['error'][$i] !== UPLOAD_ERR_OK || $up['size'][$i] > MAX_BYTES) { $err[] = '「' . $n . '」太大或上傳失敗（每張 5MB 內）。'; continue; }
+            $info = @getimagesize($up['tmp_name'][$i]);
+            $ext = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_GIF => 'gif', IMAGETYPE_WEBP => 'webp'][$info[2] ?? 0] ?? null;
+            if (!$ext) { $err[] = '「' . $n . '」不是圖片檔。'; continue; }
+            $imgs[] = [$up['tmp_name'][$i], $ext];
+        }
+    }
+
+    if (!$err) {
+        $st = $db->prepare('INSERT INTO repair (created_at,email,name,dept,place,contact,category,urgency,summary,detail,remote_ok,files,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $st->execute([date('c'), $email, $v['name'], $v['dept'], $v['place'], $v['contact'], $v['category'], $v['urgency'], $v['summary'], $v['detail'], $v['remote_ok'], '[]', 'new']);
+        $rid = (int)$db->lastInsertId();
+        if (!is_dir($FILES_DIR)) mkdir($FILES_DIR, 0750);
+        $saved = [];
+        foreach ($imgs as $k => [$tmp, $ext]) {
+            $fn = $rid . '-' . ($k + 1) . '.' . $ext;
+            if (move_uploaded_file($tmp, $FILES_DIR . '/' . $fn)) $saved[] = $fn;
+        }
+        $db->prepare('UPDATE repair SET files = ? WHERE id = ?')->execute([json_encode($saved), $rid]);
+        header('Location: ./?ok=' . $rid, true, 303);
+        exit;
+    }
+}
+if (isset($_GET['ok'])) {
+    $st = $db->prepare('SELECT * FROM repair WHERE id = ? AND email = ?');
+    $st->execute([(int)$_GET['ok'], $email]);
+    $done = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+$st = $db->prepare('SELECT id, created_at, category, summary, urgency, status, note FROM repair WHERE email = ? ORDER BY id DESC LIMIT 10');
+$st->execute([$email]);
+$mine = $st->fetchAll(PDO::FETCH_ASSOC);
+function ticket_no($r) { return 'R' . date('ymd', strtotime($r['created_at'])) . '-' . str_pad((string)$r['id'], 3, '0', STR_PAD_LEFT); }
+?>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>資訊報修｜CCRA 資訊服務</title>
+<link rel="icon" href="/img/logo.png">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css?v=dev">
+<link rel="stylesheet" href="/assets/form.css?v=dev">
+<script src="/assets/whoami.js?v=dev" defer></script>
+<style>
+.errs{margin:0;padding-left:20px}
+.two{display:grid;grid-template-columns:1fr;gap:0 14px}
+@media (min-width:640px){.two{grid-template-columns:1fr 1fr}}
+.ro{margin:0;color:var(--ink-2)}
+.check{display:flex;align-items:center;gap:8px;margin-top:14px;font-weight:700}
+.check input{width:18px;height:18px;accent-color:var(--teal)}
+.drop{display:block;margin-top:4px;padding:16px;border:2px dashed var(--edge);border-radius:14px;background:var(--cream);text-align:center;color:var(--muted);cursor:pointer}
+.drop:hover,.drop.on{border-color:var(--teal);color:var(--ink-2)}
+.drop input{display:none}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.thumbs img{width:84px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--edge)}
+.mine{width:100%;border-collapse:collapse;font-size:14px}
+.mine th,.mine td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--edge);vertical-align:top}
+.mine th{color:var(--muted);font-weight:700;font-size:12.5px}
+.mine .no{font:500 12.5px/1.4 "IBM Plex Mono",ui-monospace,monospace;color:var(--muted);white-space:nowrap}
+.st{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12.5px;font-weight:800;white-space:nowrap}
+.st.new{background:var(--mist);color:var(--teal-d)} .st.doing{background:color-mix(in srgb,var(--yellow) 22%,var(--panel));color:var(--ink)} .st.done{background:color-mix(in srgb,var(--green) 18%,var(--panel));color:var(--green)}
+@media (max-width:560px){.mine .hide-s{display:none}}
+</style>
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none"><img class="mark" src="/img/logo.png" alt="CCRA 資訊服務首頁">
+  <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
+  <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
+  <span class="sep" aria-hidden="true"></span>
+  <div class="title">資訊報修<small>IT Help Request</small></div>
+</div></header>
+<main class="wrap">
+  <div class="hero">
+    <div class="pic"><img src="/img/itsu-avatar.webp" alt=""></div>
+    <div><h1><?= h($v['name'] !== '' ? preg_replace('/^\d{3}-/', '', $v['name']) . '，' : '') ?>平安！哪裡出狀況了？</h1><p>寫下發生什麼事、附張截圖，資訊部收到就會跟你聯絡。</p></div>
+  </div>
+<?php if ($done): ?>
+  <div class="box yay">
+    <div class="big">🛠️</div>
+    <h2>報修已送出</h2>
+    <p>單號 <b style="font-family:'IBM Plex Mono',monospace"><?= h(ticket_no($done)) ?></b>｜<?= h($done['category']) ?>｜<?= h(URGENCY[$done['urgency']][0]) ?></p>
+    <p class="hint">資訊部會盡快跟你聯絡，確認信會寄到 <?= h($email) ?>。處理進度可以回這一頁查看。</p>
+    <p><a class="btn ghost" href="./">再報修一件</a> <a class="btn ghost" href="/">回首頁</a></p>
+  </div>
+<?php else: ?>
+  <?php if ($err): ?><div class="box"><ul class="errs err"><?php foreach ($err as $e) echo '<li>' . h($e) . '</li>'; ?></ul></div><?php endif; ?>
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <div class="box">
+      <p class="step"><b>1</b>哪一類問題？</p>
+      <div class="pills">
+        <?php foreach (CATS as $c): ?>
+          <label class="pill"><input type="radio" name="category" value="<?= h($c) ?>"<?= $v['category'] === $c ? ' checked' : '' ?> required><span><?= h($c) ?></span></label>
+        <?php endforeach; ?>
+      </div>
+      <label class="q" for="summary">一句話說明問題</label>
+      <input type="text" id="summary" name="summary" maxlength="80" required placeholder="例：會議室的投影機接上筆電沒有畫面" value="<?= h($v['summary']) ?>">
+      <label class="q" for="detail">詳細狀況（選填）</label>
+      <p class="hint" style="margin:0 0 6px">什麼時候開始、做了什麼動作後出現、畫面上的錯誤訊息</p>
+      <textarea id="detail" name="detail" maxlength="3000" style="min-height:110px"><?= h($v['detail']) ?></textarea>
+      <label class="q">截圖或照片（選填，最多 3 張、每張 5MB）</label>
+      <label class="drop" id="drop"><input type="file" name="shots[]" id="shots" accept="image/*" multiple><span id="droptxt">點這裡選圖片，或把圖片拖進來</span></label>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+    <div class="box">
+      <p class="step"><b>2</b>有多急？</p>
+      <div class="pills">
+        <?php foreach (URGENCY as $k => [$lab, $ico]): ?>
+          <label class="pill"><input type="radio" name="urgency" value="<?= $k ?>"<?= $v['urgency'] === $k ? ' checked' : '' ?>><span><?= $ico ?> <?= h($lab) ?></span></label>
+        <?php endforeach; ?>
+      </div>
+      <label class="check"><input type="checkbox" name="remote_ok" value="1"<?= $v['remote_ok'] ? ' checked' : '' ?>> 可以用遠端連線協助我</label>
+    </div>
+    <div class="box">
+      <p class="step"><b>3</b>怎麼找到你</p>
+      <div class="two">
+        <div><label class="q" for="name">姓名</label><input type="text" id="name" name="name" maxlength="50" required value="<?= h($v['name']) ?>"></div>
+        <div><label class="q" for="dept">部門</label>
+          <select id="dept" name="dept" required><option value="">請選擇</option>
+          <?php foreach ($DEPTS as $d) echo '<option' . ($v['dept'] === $d ? ' selected' : '') . '>' . h($d) . '</option>'; ?>
+          </select></div>
+        <div><label class="q" for="place">地點／座位（選填）</label><input type="text" id="place" name="place" maxlength="80" placeholder="例：台北辦公室 20 樓靠窗" value="<?= h($v['place']) ?>"></div>
+        <div><label class="q" for="contact">分機或手機（選填）</label><input type="text" id="contact" name="contact" maxlength="80" placeholder="例：分機 123" value="<?= h($v['contact']) ?>"></div>
+      </div>
+      <p class="ro" style="margin-top:12px">登入帳號：<?= h($email) ?>（確認信與進度通知寄到這裡）</p>
+      <button class="go" type="submit">送出報修 →</button>
+    </div>
+  </form>
+<?php endif; ?>
+<?php if ($mine): ?>
+  <div class="box">
+    <p class="step"><b>✓</b>我的報修紀錄</p>
+    <table class="mine">
+      <thead><tr><th>單號</th><th>問題</th><th class="hide-s">類別</th><th>狀態</th></tr></thead>
+      <tbody>
+      <?php foreach ($mine as $r): ?>
+        <tr><td class="no"><?= h(ticket_no($r)) ?><br><?= h(date('n/j H:i', strtotime($r['created_at']))) ?></td>
+            <td><?= h($r['summary']) ?><?php if ($r['note']): ?><br><span class="hint">資訊部：<?= h($r['note']) ?></span><?php endif; ?></td>
+            <td class="hide-s"><?= h($r['category']) ?></td>
+            <td><span class="st <?= h($r['status']) ?>"><?= h(STATUS[$r['status']] ?? $r['status']) ?></span></td></tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+<?php endif; ?>
+</main>
+<script>
+(function () {
+  var inp = document.getElementById('shots'); if (!inp) return;
+  var drop = document.getElementById('drop'), txt = document.getElementById('droptxt'), th = document.getElementById('thumbs');
+  function show() {
+    th.innerHTML = '';
+    var fs = Array.prototype.slice.call(inp.files, 0, 3);
+    txt.textContent = fs.length ? '已選 ' + fs.length + ' 張（點這裡重選）' : '點這裡選圖片，或把圖片拖進來';
+    fs.forEach(function (f) { var i = document.createElement('img'); i.alt = f.name; i.src = URL.createObjectURL(f); th.appendChild(i); });
+  }
+  inp.addEventListener('change', show);
+  ['dragenter', 'dragover'].forEach(function (e) { drop.addEventListener(e, function (ev) { ev.preventDefault(); drop.classList.add('on'); }); });
+  ['dragleave', 'drop'].forEach(function (e) { drop.addEventListener(e, function (ev) { ev.preventDefault(); drop.classList.remove('on'); }); });
+  drop.addEventListener('drop', function (ev) { if (ev.dataTransfer.files.length) { inp.files = ev.dataTransfer.files; show(); } });
+  // 也可以直接貼上剪貼簿裡的截圖（Ctrl+V）
+  document.addEventListener('paste', function (ev) {
+    var items = (ev.clipboardData && ev.clipboardData.files) || [];
+    if (!items.length) return;
+    var dt = new DataTransfer();
+    Array.prototype.forEach.call(inp.files, function (f) { dt.items.add(f); });
+    Array.prototype.forEach.call(items, function (f) { if (/^image\//.test(f.type) && dt.files.length < 3) dt.items.add(f); });
+    inp.files = dt.files; show();
+  });
+})();
+</script>
+</body>
+</html>

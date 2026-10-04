@@ -5,8 +5,7 @@ require '/var/www/it-lib/access.php';
 $id = access_identity();
 $email = strtolower($id['email']);
 
-$DEPTS = ['秘書長室','公關與品牌溝通中心','傳媒組','文宣組','活動企劃組','緬甸辦事處','社會服務部','家庭發展組','服務管理組','捐款服務中心','資訊部','蘆洲食物銀行','創新拓展部','教會發展中心','職場宣教中心','行政處','財務室','彰化食物銀行','食物銀行','營運及災害管理組','個案管理&教育發展組','資源管理組','食物銀行台中園區','北基宜辦事處','桃竹苗辦事處','中彰投辦事處','高屏辦事處','花蓮辦事處','台東辦事處','雲嘉南辦事處','基隆實物銀行'];
-$DEPTS[] = '其他';
+$DEPTS = require '/var/www/it-lib/depts.php';
 // 登入者的姓名／部門預選（熊哥 10-03：依顯示名稱前的編號判斷，沒編號放其他）。對照表由 IT大蘇本機 it_dept_map.py 產生。
 $who = (json_decode((string)@file_get_contents(STATE_DIR . '/dept_map.json'), true) ?: [])[$email] ?? ['name' => '', 'dept' => ''];
 if ($who['dept'] !== '' && !in_array($who['dept'], $DEPTS, true)) array_splice($DEPTS, -1, 0, [$who['dept']]);
