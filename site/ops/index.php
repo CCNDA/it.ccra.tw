@@ -192,9 +192,9 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
     <?php endif; ?>
   </a>
 
-  <!-- 主機監控（Zabbix）：一張卡、左右兩欄（左主機、右防火牆），有問題的才列出來（熊哥 10-04） -->
+  <!-- 設備監控（Zabbix；熊哥 10-04 定名，不叫主機監控）：一張卡、左右兩欄（左主機、右防火牆），有問題的才列出來（熊哥 10-04） -->
   <a class="box hostbox <?= $zbBad ? 'bad' : 'good' ?>" href="https://mon.ccra.tw/" target="_blank" rel="noopener" id="servers">
-    <div class="sec" style="margin:0"><h2><?= $zbBad ? '🔴' : '🟢' ?> 主機監控</h2><small>Zabbix<?= $zb ? '　更新於 ' . h(date('H:i', $zb['at'])) : '' ?>　點這裡看詳情 →</small></div>
+    <div class="sec" style="margin:0"><h2><?= $zbBad ? '🔴' : '🟢' ?> 設備監控</h2><small>Zabbix<?= $zb ? '　更新於 ' . h(date('H:i', $zb['at'])) : '' ?>　點這裡看詳情 →</small></div>
     <?php if (!$zb): ?><p class="err"><?= h($zbErr) ?></p>
     <?php else: ?>
     <div class="zcols">
