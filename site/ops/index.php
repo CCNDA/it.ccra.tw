@@ -146,6 +146,7 @@ a.hostbox.bad{border-color:color-mix(in srgb,var(--red) 55%,var(--edge))}
 table.srv{width:100%;border-collapse:collapse;font-size:14px}
 table.srv th,table.srv td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--edge);vertical-align:top}
 table.srv th{color:var(--muted);font-weight:700;font-size:12.5px}
+table.srv .tag{white-space:nowrap}
 table.srv td.num{font:500 13.5px/1.4 "IBM Plex Mono",ui-monospace,monospace;white-space:nowrap}
 table.srv td.mid{color:var(--yellow);font-weight:700} table.srv td.hi{color:var(--red);font-weight:800}
 table.srv tr.warnrow td:first-child{border-left:3px solid var(--red);padding-left:8px}

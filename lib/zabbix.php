@@ -20,7 +20,7 @@ function zabbix_hosts() {
         $hosts = zbx_call('host.get', ['output' => ['hostid', 'host', 'name'], 'filter' => ['status' => 0],
             'selectInterfaces' => ['type', 'available', 'error'], 'selectHostGroups' => ['name']], $token);
         $ids = array_column($hosts, 'hostid');
-        $keys = ['system.cpu.util', 'vm.memory.utilization', 'vfs.fs.dependent.size[/,pused]', 'vfs.fs.dependent.size[C:,pused]', 'icmppingsec'];
+        $keys = ['system.cpu.util', 'vm.memory.utilization', 'vm.memory.util', 'vfs.fs.dependent.size[/,pused]', 'vfs.fs.dependent.size[C:,pused]', 'icmppingsec'];
         $items = zbx_call('item.get', ['hostids' => $ids, 'output' => ['hostid', 'key_', 'lastvalue', 'lastclock'],
             'filter' => ['key_' => $keys]], $token);
         $probs = zbx_call('problem.get', ['hostids' => $ids, 'output' => ['eventid', 'name', 'severity', 'clock', 'objectid'],
@@ -40,7 +40,7 @@ function zabbix_hosts() {
                 if ($it['hostid'] !== $h['hostid'] || !$it['lastclock']) continue;
                 $v = round((float)$it['lastvalue'], 1);
                 if ($it['key_'] === 'system.cpu.util') $row['cpu'] = $v;
-                elseif ($it['key_'] === 'vm.memory.utilization') $row['mem'] = $v;
+                elseif ($it['key_'] === 'vm.memory.utilization' || $it['key_'] === 'vm.memory.util') $row['mem'] = $v;   // Linux／Windows 範本鍵名不同
                 elseif (str_starts_with($it['key_'], 'vfs.fs.dependent.size')) $row['disk'] = $v;
             }
             foreach ($probs as $p) if (($t2h[$p['objectid']] ?? null) === $h['hostid'])
