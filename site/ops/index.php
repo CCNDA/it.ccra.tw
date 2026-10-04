@@ -110,6 +110,7 @@ function barcls($v) { return $v === null ? '' : ($v >= 90 ? 'hi' : ($v >= 75 ? '
 <link rel="stylesheet" href="/assets/form.css?v=dev">
 <script src="/assets/whoami.js?v=dev" defer></script>
 <style>
+  .autoref{margin:-4px 0 10px;font-size:12.5px;color:var(--muted);text-align:right}
 .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
 @media (max-width:720px){.kpi{grid-template-columns:repeat(2,1fr)}}
 .kpi a{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--edge);border-radius:18px;padding:14px 16px;box-shadow:var(--glow)}
@@ -175,6 +176,7 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
     <div><h1><?= h($me) ?>，平安！今天的戰況</h1><p>只有資訊部帳號看得到。每張申請單都在 Planner「資訊部共同事務」有一張任務；指派負責人後掛上人，狀態變更會寄信通知同工。</p></div>
   </div>
   <?php if ($flash): ?><p class="flash"><?= h($flash) ?></p><?php endif; ?>
+  <p class="autoref" id="autoref">每分鐘自動更新・<?= h(date('H:i:s')) ?></p>
   <div class="kpi">
     <a href="#repair" class="<?= count(array_filter($openRep, fn($r) => $r['status'] === 'new')) ? 'hot' : '' ?>"><b><?= count(array_filter($openRep, fn($r) => $r['status'] === 'new')) ?></b><span>報修待處理</span></a>
     <a href="#repair"><b><?= count(array_filter($openRep, fn($r) => $r['status'] === 'doing')) ?></b><span>報修處理中</span></a>
@@ -275,5 +277,30 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
     <?php endforeach; ?>
   </div>
 </main>
+<script>
+// 開著就能看最新數字（熊哥 2026-10-04）：每 60 秒重新載入（監控資料快取也是 60 秒）。
+// 正在填指派／處理說明、或展開了使用計畫時先不刷，免得打到一半被洗掉；分頁在背景時不刷，切回來若已過期就立刻刷。
+(function () {
+  var EVERY = 60000, last = Date.now(), KEY = 'ops-scroll';
+  try { var y = sessionStorage.getItem(KEY); if (y !== null) { sessionStorage.removeItem(KEY); window.scrollTo(0, +y); } } catch (e) {}
+  function busy() {
+    var a = document.activeElement;
+    var dirty = [].some.call(document.querySelectorAll('form.act input[type=text], form.act select'), function (f) {
+      return f.tagName === 'SELECT' ? !f.options[f.selectedIndex].defaultSelected && f.selectedIndex !== 0 : f.value !== f.defaultValue;
+    });
+    return dirty || (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) || document.querySelector('details[open]');
+  }
+  function go() {
+    if (document.hidden || busy()) return;
+    try { sessionStorage.setItem(KEY, String(window.scrollY)); } catch (e) {}
+    location.replace(location.pathname + location.search);   // 用 GET 重載，不會重送剛才的表單
+  }
+  setInterval(function () { if (Date.now() - last >= EVERY) go(); }, 5000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - last >= EVERY) go(); });
+  var el = document.getElementById('autoref');
+  var txt = el && el.textContent;
+  setInterval(function () { if (el) el.textContent = busy() ? '編輯中，暫停自動更新' : txt; }, 2000);
+})();
+</script>
 </body>
 </html>
