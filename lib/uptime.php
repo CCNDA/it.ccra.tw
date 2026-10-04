@@ -1,5 +1,5 @@
 <?php
-// UptimeRobot 讀取（主機狀況頁與戰情室共用）。唯讀金鑰只在主機端使用、不送到瀏覽器。
+// UptimeRobot 讀取（網站狀況頁與戰情室共用）。唯讀金鑰只在主機端使用、不送到瀏覽器。
 // 金鑰放 STATE_DIR/uptimerobot-readonly.key（www-data 640），不進 GitHub；結果快取 60 秒（免費方案有頻率限制）。
 // 回傳 [資料或 null, 錯誤訊息]；資料 = ['at' => 時間戳, 'monitors' => [...]]。
 function uptime_data() {

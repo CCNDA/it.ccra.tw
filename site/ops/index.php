@@ -5,6 +5,7 @@
 require '/var/www/it-lib/access.php';
 require '/var/www/it-lib/itstaff.php';
 require '/var/www/it-lib/uptime.php';
+require '/var/www/it-lib/zabbix.php';
 $id = access_identity();
 $email = strtolower($id['email']);
 if (!is_it_staff($email)) { http_response_code(403); exit('戰情室只開放給資訊部帳號。'); }
@@ -78,12 +79,19 @@ $cafe = rows('cafe_join.sqlite', 'SELECT * FROM cafe_join ORDER BY id DESC LIMIT
 $cafePending = array_filter($cafe, fn($r) => !in_array(strtolower($r['email']), $members, true));
 $meets = rows('meet.sqlite', 'SELECT * FROM meet WHERE start >= ? ORDER BY start LIMIT 30', [date('c', strtotime('today'))]);
 $wd = ['日', '一', '二', '三', '四', '五', '六'];
-// 主機狀況摘要（熊哥 10-04：戰情室也要顯示，詳情再進主機狀況頁）
+// 網站狀況摘要（UptimeRobot；熊哥 10-04：戰情室也要顯示，詳情再進網站狀況頁）
 [$up, $upErr] = uptime_data();
 $mons = $up['monitors'] ?? [];
 $bad = array_values(array_filter($mons, fn($m) => in_array((int)$m['status'], [8, 9], true)));
 $okN = count(array_filter($mons, fn($m) => (int)$m['status'] === 2));
 $pauseN = count($mons) - $okN - count($bad);
+// 主機監控（Zabbix；熊哥 10-04：戰情室要有主機監控檢視清單）
+[$zb, $zbErr] = zabbix_hosts();
+$zh = $zb['hosts'] ?? [];
+$zbBad = count(array_filter($zh, fn($x) => $x['avail'] !== 1 || $x['problems']));
+const SEV = [0 => '未分類', 1 => '資訊', 2 => '警告', 3 => '一般', 4 => '嚴重', 5 => '災難'];
+function pct($v) { return $v === null ? '—' : $v . '%'; }
+function barcls($v) { return $v === null ? '' : ($v >= 90 ? 'hi' : ($v >= 75 ? 'mid' : '')); }
 ?>
 <!doctype html>
 <html lang="zh-Hant">
@@ -135,6 +143,13 @@ a.hostbox.bad{border-color:color-mix(in srgb,var(--red) 55%,var(--edge))}
 .hostsum b{font-size:22px;font-weight:900}
 .hostsum b.red{color:var(--red)}
 .hostbad{margin:8px 0 0;display:flex;flex-wrap:wrap;gap:6px}
+table.srv{width:100%;border-collapse:collapse;font-size:14px}
+table.srv th,table.srv td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--edge);vertical-align:top}
+table.srv th{color:var(--muted);font-weight:700;font-size:12.5px}
+table.srv td.num{font:500 13.5px/1.4 "IBM Plex Mono",ui-monospace,monospace;white-space:nowrap}
+table.srv td.mid{color:var(--yellow);font-weight:700} table.srv td.hi{color:var(--red);font-weight:800}
+table.srv tr.warnrow td:first-child{border-left:3px solid var(--red);padding-left:8px}
+table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -159,7 +174,7 @@ a.hostbox.bad{border-color:color-mix(in srgb,var(--red) 55%,var(--edge))}
   </div>
 
   <a class="box hostbox <?= $bad ? 'bad' : 'good' ?>" href="/status/" id="hosts">
-    <div class="sec" style="margin:0"><h2><?= $bad ? '🔴' : '🟢' ?> 主機狀況</h2><small><?= $up ? '更新於 ' . h(date('H:i', $up['at'])) : '' ?>　點這裡看詳情 →</small></div>
+    <div class="sec" style="margin:0"><h2><?= $bad ? '🔴' : '🟢' ?> 網站狀況</h2><small><?= $up ? '更新於 ' . h(date('H:i', $up['at'])) : '' ?>　點這裡看詳情 →</small></div>
     <?php if (!$up): ?><p class="err"><?= h($upErr) ?></p>
     <?php else: ?>
       <p class="hostsum"><b><?= $okN ?></b> 正常　<b class="<?= $bad ? 'red' : '' ?>"><?= count($bad) ?></b> 中斷／疑似中斷<?= $pauseN ? '　<b>' . $pauseN . '</b> 暫停監測' : '' ?></p>
@@ -167,6 +182,30 @@ a.hostbox.bad{border-color:color-mix(in srgb,var(--red) 55%,var(--edge))}
       <?php if ($upErr): ?><p class="meta"><?= h($upErr) ?></p><?php endif; ?>
     <?php endif; ?>
   </a>
+
+  <div class="box" id="servers">
+    <div class="sec"><h2><?= $zbBad ? '🔴' : '🟢' ?> 主機監控</h2><small>Zabbix<?= $zb ? '　更新於 ' . h(date('H:i', $zb['at'])) : '' ?>　<a href="https://mon.ccra.tw/" target="_blank" rel="noopener">開啟監控系統 →</a></small></div>
+    <?php if (!$zb): ?><p class="err"><?= h($zbErr) ?></p>
+    <?php else: ?>
+      <?php if ($zbErr): ?><p class="meta"><?= h($zbErr) ?></p><?php endif; ?>
+      <table class="srv">
+        <thead><tr><th>主機</th><th>狀態</th><th>CPU</th><th>記憶體</th><th>硬碟</th></tr></thead>
+        <tbody>
+        <?php foreach ($zh as $x): $ok = $x['avail'] === 1; ?>
+          <tr class="<?= $ok && !$x['problems'] ? '' : 'warnrow' ?>">
+            <td><a href="https://mon.ccra.tw/zabbix.php?action=host.dashboard.view&amp;hostid=<?= (int)$x['hostid'] ?>" target="_blank" rel="noopener"><?= h($x['name']) ?></a><br><span class="meta"><?= h($x['group']) ?></span>
+              <?php foreach (array_slice($x['problems'], 0, 3) as $p): ?><br><span class="tag <?= $p['severity'] >= 4 ? 'high' : 'mid' ?>"><?= h(SEV[$p['severity']] ?? '') ?></span> <span class="meta" style="margin:0"><?= h($p['name']) ?></span><?php endforeach; ?></td>
+            <td><span class="tag <?= $ok ? 'done' : ($x['avail'] === 2 ? 'high' : '') ?>"><?= $ok ? '正常' : ($x['avail'] === 2 ? '連不到' : '未知') ?></span></td>
+            <td class="num <?= barcls($x['cpu']) ?>"><?= pct($x['cpu']) ?></td>
+            <td class="num <?= barcls($x['mem']) ?>"><?= pct($x['mem']) ?></td>
+            <td class="num <?= barcls($x['disk']) ?>"><?= pct($x['disk']) ?></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+      <p class="meta">網路設備（防火牆、交換器）沒有 CPU／記憶體／硬碟欄位時顯示「—」，詳細流量請點主機名稱進監控系統。</p>
+    <?php endif; ?>
+  </div>
 
   <div class="box" id="repair">
     <div class="sec"><h2>🛠️ 資訊報修</h2><small>未完成在前，越急越前面；新報修貼 Teams 報修頻道並開 Planner 任務（資訊部共同事務），指派後掛上負責人</small></div>
