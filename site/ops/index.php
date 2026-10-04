@@ -184,29 +184,19 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
     <?php endif; ?>
   </a>
 
-  <div class="box" id="servers">
-    <div class="sec"><h2><?= $zbBad ? '🔴' : '🟢' ?> 主機監控</h2><small>Zabbix<?= $zb ? '　更新於 ' . h(date('H:i', $zb['at'])) : '' ?>　<a href="https://mon.ccra.tw/" target="_blank" rel="noopener">開啟監控系統 →</a></small></div>
+  <!-- 主機監控（Zabbix）：簡表，有問題的才列出來（熊哥 10-04：跟網站監控一樣呈現簡表） -->
+  <a class="box hostbox <?= $zbBad ? 'bad' : 'good' ?>" href="https://mon.ccra.tw/" target="_blank" rel="noopener" id="servers">
+    <div class="sec" style="margin:0"><h2><?= $zbBad ? '🔴' : '🟢' ?> 主機監控</h2><small>Zabbix<?= $zb ? '　更新於 ' . h(date('H:i', $zb['at'])) : '' ?>　點這裡看詳情 →</small></div>
     <?php if (!$zb): ?><p class="err"><?= h($zbErr) ?></p>
     <?php else: ?>
+      <p class="hostsum"><b><?= count($zh) - $zbBad ?></b> 正常　<b class="<?= $zbBad ? 'red' : '' ?>"><?= $zbBad ?></b> 有狀況</p>
+      <?php foreach ($zh as $x): if ($x['avail'] === 1 && !$x['problems']) continue; ?>
+        <p class="hostbad" style="display:block;margin-top:8px"><span class="tag high"><?= h($x['name']) ?></span>
+          <span class="meta" style="margin:0"><?= $x['avail'] === 2 ? '連不到' : ($x['avail'] === 0 ? '狀態未知' : '') ?><?php foreach (array_slice($x['problems'], 0, 2) as $p) echo '　' . h(SEV[$p['severity']] ?? '') . '：' . h($p['name']); ?></span></p>
+      <?php endforeach; ?>
       <?php if ($zbErr): ?><p class="meta"><?= h($zbErr) ?></p><?php endif; ?>
-      <table class="srv">
-        <thead><tr><th>主機</th><th>狀態</th><th>CPU</th><th>記憶體</th><th>硬碟</th></tr></thead>
-        <tbody>
-        <?php foreach ($zh as $x): $ok = $x['avail'] === 1; ?>
-          <tr class="<?= $ok && !$x['problems'] ? '' : 'warnrow' ?>">
-            <td><a href="https://mon.ccra.tw/zabbix.php?action=host.dashboard.view&amp;hostid=<?= (int)$x['hostid'] ?>" target="_blank" rel="noopener"><?= h($x['name']) ?></a><br><span class="meta"><?= h($x['group']) ?></span>
-              <?php foreach (array_slice($x['problems'], 0, 3) as $p): ?><br><span class="tag <?= $p['severity'] >= 4 ? 'high' : 'mid' ?>"><?= h(SEV[$p['severity']] ?? '') ?></span> <span class="meta" style="margin:0"><?= h($p['name']) ?></span><?php endforeach; ?></td>
-            <td><span class="tag <?= $ok ? 'done' : ($x['avail'] === 2 ? 'high' : '') ?>"><?= $ok ? '正常' : ($x['avail'] === 2 ? '連不到' : '未知') ?></span></td>
-            <td class="num <?= barcls($x['cpu']) ?>"><?= pct($x['cpu']) ?></td>
-            <td class="num <?= barcls($x['mem']) ?>"><?= pct($x['mem']) ?></td>
-            <td class="num <?= barcls($x['disk']) ?>"><?= pct($x['disk']) ?></td>
-          </tr>
-        <?php endforeach; ?>
-        </tbody>
-      </table>
-      <p class="meta">網路設備（防火牆、交換器）沒有 CPU／記憶體／硬碟欄位時顯示「—」，詳細流量請點主機名稱進監控系統。</p>
     <?php endif; ?>
-  </div>
+  </a>
 
   <div class="box" id="repair">
     <div class="sec"><h2>🛠️ 資訊報修</h2><small>未完成在前，越急越前面；新報修貼 Teams 報修頻道並開 Planner 任務（資訊部共同事務），指派後掛上負責人</small></div>
