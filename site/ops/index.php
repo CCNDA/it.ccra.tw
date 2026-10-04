@@ -19,6 +19,14 @@ function rows($name, $sql, $a = []) {
     if (!is_file(STATE_DIR . '/' . $name)) return [];
     $s = db($name)->prepare($sql); $s->execute($a); return $s->fetchAll(PDO::FETCH_ASSOC);
 }
+// 報修表的追加欄位（舊資料庫沒有就補上）
+function repair_db() {
+    $d = db('repair.sqlite');
+    $cols = array_column($d->query('PRAGMA table_info(repair)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+    foreach (['handler', 'status_notified_at', 'assignee', 'assigned_by', 'assigned_at', 'planner_task_id', 'planner_assigned_at'] as $c)
+        if (!in_array($c, $cols, true)) $d->exec("ALTER TABLE repair ADD COLUMN $c TEXT");
+    return $d;
+}
 function ticket_no($r) { return 'R' . date('ymd', strtotime($r['created_at'])) . '-' . str_pad((string)$r['id'], 3, '0', STR_PAD_LEFT); }
 function ago($t) {
     $s = time() - strtotime($t);
@@ -36,12 +44,20 @@ const RST = ['new' => '待處理', 'doing' => '處理中', 'done' => '已完成'
 $flash = '';
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!hash_equals($csrf, $_POST['csrf'] ?? '')) $flash = '頁面已過期，請重新整理。';
+    elseif (($_POST['act'] ?? '') === 'assign') {
+        // 熊哥 10-04：「報修通知先不寄信只放頻道，都指派誰負責後開票跟進」——指派後由 IT大蘇本機腳本在 Planner 開任務給負責人
+        $rid = (int)($_POST['id'] ?? 0); $who = strtolower($_POST['assignee'] ?? '');
+        if (is_it_staff($who)) {
+            $d = repair_db();
+            $d->prepare("UPDATE repair SET assignee = ?, assigned_by = ?, assigned_at = ?, status = CASE status WHEN 'new' THEN 'doing' ELSE status END, updated_at = ?, status_notified_at = NULL WHERE id = ?")
+              ->execute([$who, $me, date('c'), date('c'), $rid]);
+            $flash = '已指派給 ' . IT_STAFF[$who] . '，一小時內 Planner 任務會掛上負責人，並通知報修同工。';
+        }
+    }
     elseif (($_POST['act'] ?? '') === 'repair') {
         $rid = (int)($_POST['id'] ?? 0); $st = $_POST['status'] ?? ''; $note = mb_substr(trim($_POST['note'] ?? ''), 0, 300);
         if (isset(RST[$st]) && $st !== 'new') {
-            $d = db('repair.sqlite');
-            $cols = array_column($d->query('PRAGMA table_info(repair)')->fetchAll(PDO::FETCH_ASSOC), 'name');
-            foreach (['handler', 'status_notified_at'] as $c) if (!in_array($c, $cols, true)) $d->exec("ALTER TABLE repair ADD COLUMN $c TEXT");
+            $d = repair_db();
             $d->prepare('UPDATE repair SET status = ?, note = ?, handler = ?, updated_at = ?, status_notified_at = NULL WHERE id = ?')
               ->execute([$st, $note, $me, date('c'), $rid]);
             $flash = '已更新，同工會在一小時內收到通知信。';
@@ -118,7 +134,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px;margin-top:8px}
 <main class="wrap">
   <div class="hero">
     <div class="pic">🛰️</div>
-    <div><h1><?= h($me) ?>，平安！今天的戰況</h1><p>只有資訊部帳號看得到。報修改狀態後，系統會寄信通知同工。</p></div>
+    <div><h1><?= h($me) ?>，平安！今天的戰況</h1><p>只有資訊部帳號看得到。每張申請單都在 Planner「資訊部共同事務」有一張任務；指派負責人後掛上人，狀態變更會寄信通知同工。</p></div>
   </div>
   <?php if ($flash): ?><p class="flash"><?= h($flash) ?></p><?php endif; ?>
   <div class="kpi">
@@ -129,7 +145,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px;margin-top:8px}
   </div>
 
   <div class="box" id="repair">
-    <div class="sec"><h2>🛠️ 資訊報修</h2><small>未完成在前，越急越前面</small></div>
+    <div class="sec"><h2>🛠️ 資訊報修</h2><small>未完成在前，越急越前面；新報修貼 Teams 報修頻道並開 Planner 任務（資訊部共同事務），指派後掛上負責人</small></div>
     <?php if (!$repairs): ?><p class="empty">目前沒有報修。</p><?php endif; ?>
     <?php foreach ($repairs as $r): $files = json_decode($r['files'] ?: '[]', true); ?>
       <div class="item">
@@ -138,16 +154,23 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px;margin-top:8px}
           <span class="tag <?= h(URG[$r['urgency']][1] ?? '') ?>"><?= h(URG[$r['urgency']][0] ?? $r['urgency']) ?></span>
           <span class="tag"><?= h($r['category']) ?></span>
           <span class="ttl"><?= h($r['summary']) ?></span></div>
-        <div class="meta"><?= h($r['name']) ?>（<?= h($r['dept']) ?>）<?= $r['place'] ? '｜' . h($r['place']) : '' ?><?= $r['contact'] ? '｜' . h($r['contact']) : '' ?>｜<?= $r['remote_ok'] ? '可遠端' : '不要遠端' ?>｜<?= h(ago($r['created_at'])) ?><?= !empty($r['handler']) ? '｜經手：' . h($r['handler']) : '' ?></div>
+        <div class="meta"><?= h($r['name']) ?>（<?= h($r['dept']) ?>）<?= $r['place'] ? '｜' . h($r['place']) : '' ?><?= $r['contact'] ? '｜' . h($r['contact']) : '' ?>｜<?= $r['remote_ok'] ? '可遠端' : '不要遠端' ?>｜<?= h(ago($r['created_at'])) ?><?= !empty($r['assignee']) ? '｜負責：' . h(IT_STAFF[$r['assignee']] ?? $r['assignee']) . (!empty($r['planner_assigned_at']) ? '' : '（一小時內同步到 Planner）') : '' ?><?= !empty($r['handler']) ? '｜最後更新：' . h($r['handler']) : '' ?></div>
         <?php if ($r['detail']): ?><p class="desc"><?= h($r['detail']) ?></p><?php endif; ?>
         <?php if ($files): ?><div class="shots"><?php foreach ($files as $i => $f): ?><a href="/repair/file.php?f=<?= h($f) ?>" target="_blank" rel="noopener">截圖 <?= $i + 1 ?></a><?php endforeach; ?></div><?php endif; ?>
         <?php if ($r['note']): ?><div class="meta">處理說明：<?= h($r['note']) ?></div><?php endif; ?>
         <?php if ($r['status'] !== 'done'): ?>
+        <?php if (empty($r['assignee'])): ?>
+        <form method="post" class="act">
+          <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="assign"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+          <select name="assignee" required style="flex:0 1 200px;padding:7px 10px;border-radius:10px;font-size:14px"><option value="">指派負責人…</option>
+          <?php foreach (IT_STAFF as $em => $nm): ?><option value="<?= h($em) ?>"><?= h($nm) ?></option><?php endforeach; ?></select>
+          <button class="ok">指派負責人</button>
+        </form>
+        <?php endif; ?>
         <form method="post" class="act">
           <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="repair"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
           <input type="text" name="note" maxlength="300" placeholder="給同工的一句話（會寫進通知信）" value="<?= h($r['note']) ?>">
-          <?php if ($r['status'] === 'new'): ?><button name="status" value="doing">接手・處理中</button><?php endif; ?>
-          <button name="status" value="done" class="ok">已完成</button>
+          <button name="status" value="done">已完成</button>
         </form>
         <?php endif; ?>
       </div>
