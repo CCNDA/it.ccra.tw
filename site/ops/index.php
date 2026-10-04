@@ -88,6 +88,10 @@ $pauseN = count($mons) - $okN - count($bad);
 // 主機監控（Zabbix；熊哥 10-04：戰情室要有主機監控檢視清單）
 [$zb, $zbErr] = zabbix_hosts();
 $zh = $zb['hosts'] ?? [];
+// 熊哥 10-04：主機和防火牆分開顯示 → 依 Zabbix 主機群組拆成「主機」與「網路設備」兩張卡
+$isNet = fn($x) => $x['group'] === '網路設備';
+$zbHosts = array_values(array_filter($zh, fn($x) => !$isNet($x)));
+$zbNet = array_values(array_filter($zh, $isNet));
 $zbBad = count(array_filter($zh, fn($x) => $x['avail'] !== 1 || $x['problems']));
 const SEV = [0 => '未分類', 1 => '資訊', 2 => '警告', 3 => '一般', 4 => '嚴重', 5 => '災難'];
 function pct($v) { return $v === null ? '—' : $v . '%'; }
@@ -184,19 +188,22 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
     <?php endif; ?>
   </a>
 
-  <!-- 主機監控（Zabbix）：簡表，有問題的才列出來（熊哥 10-04：跟網站監控一樣呈現簡表） -->
-  <a class="box hostbox <?= $zbBad ? 'bad' : 'good' ?>" href="https://mon.ccra.tw/" target="_blank" rel="noopener" id="servers">
-    <div class="sec" style="margin:0"><h2><?= $zbBad ? '🔴' : '🟢' ?> 主機監控</h2><small>Zabbix<?= $zb ? '　更新於 ' . h(date('H:i', $zb['at'])) : '' ?>　點這裡看詳情 →</small></div>
+  <!-- 主機監控／網路設備（Zabbix）：簡表，有問題的才列出來（熊哥 10-04：跟網站監控一樣呈現簡表；主機和防火牆分開顯示） -->
+  <?php foreach ([['servers', '主機監控', $zbHosts], ['network', '網路設備（防火牆）', $zbNet]] as [$cid, $ctitle, $list]):
+      $nb = count(array_filter($list, fn($x) => $x['avail'] !== 1 || $x['problems'])); ?>
+  <a class="box hostbox <?= $nb ? 'bad' : 'good' ?>" href="https://mon.ccra.tw/" target="_blank" rel="noopener" id="<?= $cid ?>">
+    <div class="sec" style="margin:0"><h2><?= $nb ? '🔴' : '🟢' ?> <?= h($ctitle) ?></h2><small>Zabbix<?= $zb ? '　更新於 ' . h(date('H:i', $zb['at'])) : '' ?>　點這裡看詳情 →</small></div>
     <?php if (!$zb): ?><p class="err"><?= h($zbErr) ?></p>
     <?php else: ?>
-      <p class="hostsum"><b><?= count($zh) - $zbBad ?></b> 正常　<b class="<?= $zbBad ? 'red' : '' ?>"><?= $zbBad ?></b> 有狀況</p>
-      <?php foreach ($zh as $x): if ($x['avail'] === 1 && !$x['problems']) continue; ?>
+      <p class="hostsum"><b><?= count($list) - $nb ?></b> 正常　<b class="<?= $nb ? 'red' : '' ?>"><?= $nb ?></b> 有狀況</p>
+      <?php foreach ($list as $x): if ($x['avail'] === 1 && !$x['problems']) continue; ?>
         <p class="hostbad" style="display:block;margin-top:8px"><span class="tag high"><?= h($x['name']) ?></span>
           <span class="meta" style="margin:0"><?= $x['avail'] === 2 ? '連不到' : ($x['avail'] === 0 ? '狀態未知' : '') ?><?php foreach (array_slice($x['problems'], 0, 2) as $p) echo '　' . h(SEV[$p['severity']] ?? '') . '：' . h($p['name']); ?></span></p>
       <?php endforeach; ?>
       <?php if ($zbErr): ?><p class="meta"><?= h($zbErr) ?></p><?php endif; ?>
     <?php endif; ?>
   </a>
+  <?php endforeach; ?>
 
   <div class="box" id="repair">
     <div class="sec"><h2>🛠️ 資訊報修</h2><small>未完成在前，越急越前面；新報修貼 Teams 報修頻道並開 Planner 任務（資訊部共同事務），指派後掛上負責人</small></div>
