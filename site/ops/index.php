@@ -4,6 +4,7 @@
 // 這台主機不寄信：報修改狀態只寫進資料庫，通知信由 IT大蘇本機 repair_notify.py 每小時補寄（先記後寄）。
 require '/var/www/it-lib/access.php';
 require '/var/www/it-lib/itstaff.php';
+require '/var/www/it-lib/uptime.php';
 $id = access_identity();
 $email = strtolower($id['email']);
 if (!is_it_staff($email)) { http_response_code(403); exit('戰情室只開放給資訊部帳號。'); }
@@ -77,6 +78,12 @@ $cafe = rows('cafe_join.sqlite', 'SELECT * FROM cafe_join ORDER BY id DESC LIMIT
 $cafePending = array_filter($cafe, fn($r) => !in_array(strtolower($r['email']), $members, true));
 $meets = rows('meet.sqlite', 'SELECT * FROM meet WHERE start >= ? ORDER BY start LIMIT 30', [date('c', strtotime('today'))]);
 $wd = ['日', '一', '二', '三', '四', '五', '六'];
+// 主機狀況摘要（熊哥 10-04：戰情室也要顯示，詳情再進主機狀況頁）
+[$up, $upErr] = uptime_data();
+$mons = $up['monitors'] ?? [];
+$bad = array_values(array_filter($mons, fn($m) => in_array((int)$m['status'], [8, 9], true)));
+$okN = count(array_filter($mons, fn($m) => (int)$m['status'] === 2));
+$pauseN = count($mons) - $okN - count($bad);
 ?>
 <!doctype html>
 <html lang="zh-Hant">
@@ -121,6 +128,13 @@ $wd = ['日', '一', '二', '三', '四', '五', '六'];
 .flash{background:var(--mist);border-radius:12px;padding:8px 12px;margin-top:14px;font-weight:700}
 details summary{cursor:pointer;color:var(--muted);font-size:14px;margin-top:8px}
 .empty{color:var(--muted);margin:0}
+a.hostbox{display:block;text-decoration:none;color:inherit}
+a.hostbox:hover{border-color:var(--teal)}
+a.hostbox.bad{border-color:color-mix(in srgb,var(--red) 55%,var(--edge))}
+.hostsum{margin:8px 0 0;font-size:15px}
+.hostsum b{font-size:22px;font-weight:900}
+.hostsum b.red{color:var(--red)}
+.hostbad{margin:8px 0 0;display:flex;flex-wrap:wrap;gap:6px}
 </style>
 </head>
 <body>
@@ -143,6 +157,16 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px;margin-top:8px}
     <a href="#cafe"><b><?= count($cafePending) ?></b><span>咖啡廳待加入</span></a>
     <a href="#meet"><b><?= count($meets) ?></b><span>主任有約（今天起）</span></a>
   </div>
+
+  <a class="box hostbox <?= $bad ? 'bad' : 'good' ?>" href="/status/" id="hosts">
+    <div class="sec" style="margin:0"><h2><?= $bad ? '🔴' : '🟢' ?> 主機狀況</h2><small><?= $up ? '更新於 ' . h(date('H:i', $up['at'])) : '' ?>　點這裡看詳情 →</small></div>
+    <?php if (!$up): ?><p class="err"><?= h($upErr) ?></p>
+    <?php else: ?>
+      <p class="hostsum"><b><?= $okN ?></b> 正常　<b class="<?= $bad ? 'red' : '' ?>"><?= count($bad) ?></b> 中斷／疑似中斷<?= $pauseN ? '　<b>' . $pauseN . '</b> 暫停監測' : '' ?></p>
+      <?php if ($bad): ?><p class="hostbad"><?php foreach ($bad as $m) echo '<span class="tag high">' . h($m['friendly_name']) . '</span> '; ?></p><?php endif; ?>
+      <?php if ($upErr): ?><p class="meta"><?= h($upErr) ?></p><?php endif; ?>
+    <?php endif; ?>
+  </a>
 
   <div class="box" id="repair">
     <div class="sec"><h2>🛠️ 資訊報修</h2><small>未完成在前，越急越前面；新報修貼 Teams 報修頻道並開 Planner 任務（資訊部共同事務），指派後掛上負責人</small></div>

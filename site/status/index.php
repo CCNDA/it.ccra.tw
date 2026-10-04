@@ -7,28 +7,8 @@ access_identity();
 
 function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
-$cache = STATE_DIR . '/uptime_cache.json';
-$data = null; $err = '';
-if (is_file($cache) && time() - filemtime($cache) < 60) {
-    $data = json_decode(file_get_contents($cache), true);
-} else {
-    $key = trim((string)@file_get_contents(STATE_DIR . '/uptimerobot-readonly.key'));
-    $body = http_build_query(['api_key' => $key, 'format' => 'json', 'custom_uptime_ratios' => '1-7-30',
-        'response_times' => 1, 'response_times_average' => 30, 'response_times_limit' => 48, 'logs' => 1, 'logs_limit' => 5]);
-    $ctx = stream_context_create(['http' => ['method' => 'POST', 'timeout' => 15, 'content' => $body,
-        'header' => "Content-Type: application/x-www-form-urlencoded\r\nCache-Control: no-cache\r\nUser-Agent: it.ccra.tw-status\r\n"]]);
-    $raw = @file_get_contents('https://api.uptimerobot.com/v2/getMonitors', false, $ctx);
-    $j = $raw ? json_decode($raw, true) : null;
-    if ($j && ($j['stat'] ?? '') === 'ok') {
-        $data = ['at' => time(), 'monitors' => $j['monitors']];
-        file_put_contents($cache, json_encode($data, JSON_UNESCAPED_UNICODE));
-    } elseif (is_file($cache)) {
-        $data = json_decode(file_get_contents($cache), true);
-        $err = '暫時讀不到 UptimeRobot，以下為上次取得的資料。';
-    } else {
-        $err = '讀不到 UptimeRobot，請稍後再試。';
-    }
-}
+require '/var/www/it-lib/uptime.php';
+[$data, $err] = uptime_data();
 $mons = $data['monitors'] ?? [];
 // 狀態排序：異常在前
 $rank = [9 => 0, 8 => 1, 1 => 2, 2 => 3, 0 => 4];
