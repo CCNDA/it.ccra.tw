@@ -29,6 +29,16 @@ function repair_db() {
         if (!in_array($c, $cols, true)) $d->exec("ALTER TABLE repair ADD COLUMN $c TEXT");
     return $d;
 }
+// AI 申請的審核欄位（舊資料庫沒有就補上）。只有主任能核准（熊哥 2026-08-26 定案：由王主任審核，主管知會）
+const AI_APPROVER = 'black@ccra.org.tw';
+const AID = ['approve' => '核准', 'reject' => '不核准'];
+function ai_db() {
+    $d = db('ai_apply.sqlite');
+    $cols = array_column($d->query('PRAGMA table_info(ai_apply)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+    foreach (['tools', 'planner_task_id', 'src', 'decision', 'decision_note', 'decided_by', 'decided_at', 'decision_notified_at'] as $c)
+        if (!in_array($c, $cols, true)) $d->exec("ALTER TABLE ai_apply ADD COLUMN $c TEXT");
+    return $d;
+}
 function ticket_no($r) { return 'R' . date('ymd', strtotime($r['created_at'])) . '-' . str_pad((string)$r['id'], 3, '0', STR_PAD_LEFT); }
 function ago($t) {
     $s = time() - strtotime($t);
@@ -65,6 +75,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $flash = '已更新，同工會在一小時內收到通知信。';
         }
     }
+    elseif (($_POST['act'] ?? '') === 'ai') {
+        // AI 申請核准／不核准（熊哥 10-05：「准與不準我要怎麼核准 還有怎麼留下意見」）。
+        // 只有主任能決定；這台不寄信，結果信與 Planner 由 IT大蘇本機 ai_internal_notify.py 下一輪處理（先記後寄）。
+        $aid = (int)($_POST['id'] ?? 0); $dec = $_POST['decision'] ?? ''; $note = mb_substr(trim($_POST['note'] ?? ''), 0, 500);
+        if ($email !== AI_APPROVER) $flash = 'AI 申請只有主任能核准。';
+        elseif (!isset(AID[$dec])) $flash = '請選核准或不核准。';
+        else {
+            $d = ai_db();
+            $s = $d->prepare('UPDATE ai_apply SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ?, decision_notified_at = NULL WHERE id = ? AND decision IS NULL');
+            $s->execute([$dec, $note, $me, date('c'), $aid]);
+            $flash = $s->rowCount() ? '已' . AID[$dec] . '，申請人一小時內會收到結果通知信。' : '這筆已經有決定了。';
+        }
+        header('Location: ./?m=' . urlencode($flash) . '#ai', true, 303);
+        exit;
+    }
     header('Location: ./?m=' . urlencode($flash) . '#repair', true, 303);
     exit;
 }
@@ -73,7 +98,8 @@ $flash = (string)($_GET['m'] ?? '');
 // ── 情報 ──
 $repairs = rows('repair.sqlite', "SELECT * FROM repair ORDER BY CASE status WHEN 'new' THEN 0 WHEN 'doing' THEN 1 ELSE 2 END, CASE urgency WHEN 'high' THEN 0 WHEN 'mid' THEN 1 ELSE 2 END, id DESC LIMIT 60");
 $openRep = array_filter($repairs, fn($r) => $r['status'] !== 'done');
-$ai = rows('ai_apply.sqlite', 'SELECT * FROM ai_apply ORDER BY id DESC LIMIT 30');
+$ai = is_file(STATE_DIR . '/ai_apply.sqlite')
+    ? ai_db()->query('SELECT * FROM ai_apply ORDER BY (decision IS NULL) DESC, id DESC LIMIT 30')->fetchAll(PDO::FETCH_ASSOC) : [];
 $members = json_decode((string)@file_get_contents(STATE_DIR . '/cafe_members.json'), true) ?: [];
 $cafe = rows('cafe_join.sqlite', 'SELECT * FROM cafe_join ORDER BY id DESC LIMIT 30');
 $cafePending = array_filter($cafe, fn($r) => !in_array(strtolower($r['email']), $members, true));
@@ -250,12 +276,26 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
   </div>
 
   <div class="box" id="ai">
-    <div class="sec"><h2>✨ AI 工具使用申請</h2><small>審核由熊哥回信核准；申請人已收到確認信</small></div>
+    <div class="sec"><h2>✨ AI 工具使用申請</h2><small>主任在這裡核准／不核准並留意見，結果一小時內寄給申請人</small></div>
     <?php if (!$ai): ?><p class="empty">目前沒有申請。</p><?php endif; ?>
     <?php foreach ($ai as $r): ?>
       <div class="item">
         <div class="row"><span class="tag"><?= h($r['tools'] ?? 'Claude') ?></span><span class="ttl"><?= h($r['name']) ?></span><span class="meta" style="margin:0">（<?= h($r['dept']) ?>）<?= h($r['email']) ?>｜<?= h(ago($r['created_at'])) ?>｜個資：<?= h($r['pii']) ?></span></div>
         <details><summary>使用計畫與理由</summary><p class="desc"><b>使用計畫</b>：<?= h($r['uses']) ?></p><p class="desc"><b>為什麼 Copilot 不夠用</b>：<?= h($r['why']) ?></p></details>
+        <?php if (!empty($r['decision'])): ?>
+          <div class="meta"><span class="tag <?= $r['decision'] === 'approve' ? 'done' : 'high' ?>"><?= h(AID[$r['decision']] ?? $r['decision']) ?></span>
+            <?= h($r['decided_by']) ?>｜<?= h(ago($r['decided_at'])) ?><?= $r['decision_note'] !== '' ? '｜意見：' . h($r['decision_note']) : '' ?>
+            ｜<?= empty($r['decision_notified_at']) ? '結果信待寄' : '已通知申請人' ?></div>
+        <?php elseif ($email === AI_APPROVER): ?>
+        <form method="post" class="act">
+          <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="ai"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+          <input type="text" name="note" maxlength="500" placeholder="意見（選填，會寫進給申請人的結果信）">
+          <button class="ok" name="decision" value="approve">核准</button>
+          <button name="decision" value="reject" onclick="return confirm('確定不核准？')">不核准</button>
+        </form>
+        <?php else: ?>
+          <div class="meta"><span class="tag new">待主任審核</span></div>
+        <?php endif; ?>
       </div>
     <?php endforeach; ?>
   </div>
