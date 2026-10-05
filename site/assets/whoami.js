@@ -14,6 +14,10 @@ var IT_STAFF = ['black@ccra.org.tw', 'orionlin@cceaccra.onmicrosoft.com', 'irene
     a.title = email + '\n點一下開啟 M365 帳戶設定';
     a.setAttribute('aria-label', '登入身分：' + name + '（' + email + '），開啟 M365 帳戶設定');
     var av = document.createElement('span'); av.className = 'who-av'; av.textContent = name.charAt(0) || '?';
+    // M365 大頭貼（熊哥 10-05）；沒設照片的人 avatar.php 回 404，就維持姓名第一個字
+    var img = new Image(); img.alt = '';
+    img.onload = function () { av.textContent = ''; av.appendChild(img); };
+    img.src = '/live/avatar.php?e=' + encodeURIComponent(email);
     var tx = document.createElement('span'); tx.className = 'who-tx';
     var b = document.createElement('b'); b.textContent = name;
     var s = document.createElement('small'); s.textContent = email;

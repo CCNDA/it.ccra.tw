@@ -1,0 +1,73 @@
+<?php
+// 首頁「誰在線上」與彈幕（熊哥 2026-10-05 TG：「可以有彈幕和顯示誰在線上嗎」）。
+// 在線＝最近 90 秒內開著首頁（頁面前景每 10 秒、背景每 60 秒回報一次）。
+// 彈幕只留 10 分鐘，本人與資訊部可刪（熊哥：「首頁 可以刪 不用24小時 10分鍾就好」）。
+// GET  ?a=poll          回報自己在線，回傳在線名單與 10 分鐘內的彈幕
+// POST ?a=say  text=…   發一則彈幕（40 字內，同一人 5 秒一則）
+// POST ?a=del  id=…     刪彈幕（本人或資訊部）
+// POST 一律要帶 X-Live 標頭：跨站表單帶不了自訂標頭，自訂標頭又會觸發 CORS 預檢，本站不回應預檢，等於擋掉 CSRF。
+require '/var/www/it-lib/access.php';
+require '/var/www/it-lib/itstaff.php';
+$id = access_identity();
+$email = strtolower($id['email']);
+$map = json_decode((string)@file_get_contents(STATE_DIR . '/dept_map.json'), true) ?: [];
+$name = $map[$email]['name'] ?? explode('@', $email)[0];
+
+const ONLINE_SEC = 90;
+const KEEP_SEC   = 600;
+const MAX_LEN    = 40;
+const GAP_SEC    = 5;
+
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
+function out($code, $a) { http_response_code($code); echo json_encode($a, JSON_UNESCAPED_UNICODE); exit; }
+
+$db = new PDO('sqlite:' . STATE_DIR . '/live.sqlite');
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$db->exec('PRAGMA busy_timeout=3000');
+$db->exec('CREATE TABLE IF NOT EXISTS presence (email TEXT PRIMARY KEY, name TEXT, seen INTEGER)');
+$db->exec('CREATE TABLE IF NOT EXISTS danmaku (id INTEGER PRIMARY KEY, at INTEGER, email TEXT, name TEXT, text TEXT)');
+$now = time();
+$db->prepare('DELETE FROM danmaku WHERE at < ?')->execute([$now - KEEP_SEC]);
+
+$a = $_GET['a'] ?? '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (($_SERVER['HTTP_X_LIVE'] ?? '') !== '1') out(403, ['err' => 'bad request']);
+    if ($a === 'say') {
+        $t = preg_replace('/[\x00-\x1F\x7F\x{200B}-\x{200F}\x{202A}-\x{202E}]/u', '', (string)($_POST['text'] ?? ''));
+        $t = trim(preg_replace('/\s+/u', ' ', $t));
+        if ($t === '' || mb_strlen($t) > MAX_LEN) out(400, ['err' => '請輸入 1～' . MAX_LEN . ' 個字']);
+        $st = $db->prepare('SELECT MAX(at) FROM danmaku WHERE email = ?');
+        $st->execute([$email]);
+        if ($now - (int)$st->fetchColumn() < GAP_SEC) out(429, ['err' => '慢一點，' . GAP_SEC . ' 秒後再發']);
+        $db->prepare('INSERT INTO danmaku (at,email,name,text) VALUES (?,?,?,?)')->execute([$now, $email, $name, $t]);
+        out(200, ['ok' => 1, 'id' => (int)$db->lastInsertId()]);
+    }
+    if ($a === 'del') {
+        $st = $db->prepare('SELECT email FROM danmaku WHERE id = ?');
+        $st->execute([(int)($_POST['id'] ?? 0)]);
+        $owner = $st->fetchColumn();
+        if ($owner === false) out(200, ['ok' => 1]);                     // 已過期或已被刪
+        if ($owner !== $email && !is_it_staff($email)) out(403, ['err' => '只能刪自己的']);
+        $db->prepare('DELETE FROM danmaku WHERE id = ?')->execute([(int)$_POST['id']]);
+        out(200, ['ok' => 1]);
+    }
+    out(400, ['err' => 'unknown action']);
+}
+
+if ($a !== 'poll') out(400, ['err' => 'unknown action']);
+$db->prepare('INSERT INTO presence (email,name,seen) VALUES (?,?,?) ON CONFLICT(email) DO UPDATE SET name=excluded.name, seen=excluded.seen')
+   ->execute([$email, $name, $now]);
+
+function has_av($e) { return is_file(STATE_DIR . '/avatars/' . sha1($e) . '.jpg'); }
+$it = is_it_staff($email);
+$online = [];
+$st = $db->prepare('SELECT email,name FROM presence WHERE seen >= ? ORDER BY name');
+$st->execute([$now - ONLINE_SEC]);
+foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r)
+    $online[] = ['email' => $r['email'], 'name' => $r['name'], 'av' => has_av($r['email']), 'me' => $r['email'] === $email];
+$dm = [];
+foreach ($db->query('SELECT id,at,email,name,text FROM danmaku ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) as $r)
+    $dm[] = ['id' => (int)$r['id'], 'at' => (int)$r['at'], 'name' => $r['name'], 'text' => $r['text'],
+             'del' => $it || $r['email'] === $email];
+out(200, ['now' => $now, 'keep' => KEEP_SEC, 'online' => $online, 'dm' => $dm]);
