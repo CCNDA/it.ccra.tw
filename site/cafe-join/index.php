@@ -46,7 +46,12 @@ $asked = $st->fetchColumn();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>申請加入資訊部咖啡廳｜CCRA 資訊服務</title>
-<link rel="icon" href="/img/logo.png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#109a4b">
+<meta name="apple-mobile-web-app-title" content="資訊服務">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css?v=dev">
 <link rel="stylesheet" href="/assets/form.css?v=dev">

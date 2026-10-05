@@ -1,0 +1,15 @@
+{
+  "name": "CCRA 資訊服務",
+  "short_name": "資訊服務",
+  "description": "中華基督教救助協會資訊部：AI 工具申請、資訊報修、與主任有約",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#109a4b",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
