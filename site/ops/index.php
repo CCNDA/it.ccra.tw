@@ -263,8 +263,12 @@ table.srv tr.warnrow td:first-child{border-left:3px solid var(--red);padding-lef
 table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:hover{text-decoration:underline}
 .kpi.plk{grid-template-columns:repeat(5,1fr)}
 .kpi.plk{margin-top:12px}
-.kpi.plk > a{padding:12px 14px;border-radius:16px}
-.kpi.plk > a.hot{border-color:color-mix(in srgb,var(--red) 50%,transparent)}
+.kpi.plk > .pltile{display:block;text-align:left;font:inherit;cursor:pointer;color:inherit;background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:12px 14px;box-shadow:var(--glow)}
+.kpi.plk > .pltile.hot{border-color:color-mix(in srgb,var(--red) 50%,transparent)}
+.kpi.plk > .pltile.on{border-color:var(--green);box-shadow:0 0 0 2px color-mix(in srgb,var(--green) 35%,transparent)}
+.kpi.plk > .pltile:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.plpanel{margin-top:12px;border-top:1px solid var(--edge);padding-top:8px}
+.plhead{font-weight:800;margin-bottom:4px}
 .plrow{flex-wrap:nowrap;margin-top:4px}
 .plrow .pltitle{flex:1 1 auto;min-width:0;color:var(--ink);text-decoration:none}
 .plrow .pltitle:hover{text-decoration:underline}
@@ -304,29 +308,60 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
 
   <div class="box" id="planner">
     <div class="sec"><h2>📋 Planner 任務（資訊部共同事務）</h2><small><?= $pl ? '更新於 ' . h(substr($pl['updated_at'], 11, 5)) . '・每小時更新' : '尚無資料' ?>・<a href="<?= h(PLANNER_URL) ?>" target="_blank" rel="noopener">開啟 Planner</a></small></div>
-    <?php if ($pl): ?>
-    <div class="kpi plk">
-      <a href="#pl-today_list" onclick="var d=document.getElementById('pl-today_list');if(d)d.open=true"><b><?= (int)$pl['today'] ?></b><span>今日到期</span></a>
-      <a href="<?= h(PLANNER_URL) ?>" target="_blank" rel="noopener"><b><?= (int)$pl['today_done'] ?></b><span>今日完成</span></a>
-      <a href="<?= h(PLANNER_URL) ?>" target="_blank" rel="noopener"><b><?= (int)$pl['month'] ?></b><span>當月到期</span></a>
-      <a href="<?= h(PLANNER_URL) ?>" target="_blank" rel="noopener"><b><?= (int)$pl['month_done'] ?></b><span>當月完成</span></a>
-      <a href="#pl-overdue_list" class="<?= $pl['overdue'] ? 'hot' : '' ?>" onclick="var d=document.getElementById('pl-overdue_list');if(d)d.open=true"><b><?= (int)$pl['overdue'] ?></b><span>逾期</span></a>
+    <?php if ($pl):
+      // 已按「完成」但 Planner 還沒同步的任務：數字與清單先照「已完成」呈現（熊哥 10-05：「完成按鈕要能跟卡連動」）
+      $pend = array_flip($plPending);
+      $moved = [];
+      foreach (['today_list', 'month_list', 'overdue_list'] as $k) foreach ($pl[$k] ?? [] as $t) if (isset($pend[$t['id']])) $moved[$t['id']] = $t;
+      $L = [];
+      foreach (['today_list', 'month_list', 'overdue_list'] as $k) $L[$k] = array_values(array_filter($pl[$k] ?? [], fn($t) => !isset($pend[$t['id']])));
+      $extra = array_map(fn($t) => $t + ['done' => date('Y-m-d'), 'pending' => 1], array_values($moved));
+      $L['today_done_list'] = array_merge($extra, $pl['today_done_list'] ?? []);
+      $L['month_done_list'] = array_merge($extra, $pl['month_done_list'] ?? []);
+      $N = [
+        'today_list' => $pl['today'] - (count($pl['today_list'] ?? []) - count($L['today_list'])),
+        'today_done_list' => $pl['today_done'] + count($moved),
+        'month_list' => $pl['month'] - (count($pl['month_list'] ?? []) - count($L['month_list'])),
+        'month_done_list' => $pl['month_done'] + count($moved),
+        'overdue_list' => $pl['overdue'] - (count($pl['overdue_list'] ?? []) - count($L['overdue_list'])),
+      ];
+      $TILES = ['today_list' => '今日到期', 'today_done_list' => '今日完成', 'month_list' => '當月到期', 'month_done_list' => '當月完成', 'overdue_list' => '逾期'];
+    ?>
+    <div class="kpi plk" role="tablist">
+      <?php foreach ($TILES as $k => $lab): ?>
+      <button type="button" class="pltile <?= $k === 'overdue_list' && $N[$k] ? 'hot' : '' ?>" data-k="<?= h($k) ?>" aria-controls="pl-<?= h($k) ?>" aria-expanded="false"><b><?= (int)$N[$k] ?></b><span><?= h($lab) ?></span></button>
+      <?php endforeach; ?>
     </div>
-    <p class="meta" style="margin:8px 0 0">未完成共 <?= (int)$pl['open_total'] ?> 件，其中 <?= (int)$pl['no_due'] ?> 件沒有設到期日。</p>
-    <?php foreach ([['overdue_list', '逾期清單'], ['today_list', '今日到期']] as [$k, $lab]): if (!empty($pl[$k])): ?>
-      <?php $rows = array_values(array_filter($pl[$k], fn($t) => !in_array($t['id'], $plPending, true))); ?>
-      <details id="pl-<?= h($k) ?>"><summary><?= h($lab) ?>（<?= count($rows) ?>）</summary>
-        <?php foreach ($rows as $t): ?>
+    <p class="meta" style="margin:8px 0 0">點上面的數字看清單。未完成共 <?= (int)$pl['open_total'] - count($moved) ?> 件，其中 <?= (int)$pl['no_due'] ?> 件沒有設到期日。</p>
+    <?php foreach ($TILES as $k => $lab): $isDone = strpos($k, 'done') !== false; ?>
+      <div class="plpanel" id="pl-<?= h($k) ?>" hidden>
+        <div class="plhead"><?= h($lab) ?>（<?= (int)$N[$k] ?>）<?= count($L[$k]) < $N[$k] ? '・只列前 ' . count($L[$k]) . ' 筆' : '' ?></div>
+        <?php if (!$L[$k]): ?><p class="empty">沒有任務。</p><?php endif; ?>
+        <?php foreach ($L[$k] as $t): $d = $isDone ? ($t['done'] ?? '') : $t['due']; ?>
         <form method="post" class="act plrow">
           <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="ptask"><input type="hidden" name="tid" value="<?= h($t['id']) ?>">
-          <span class="no"><?= h(substr($t['due'], 0, 4) === date('Y') ? substr($t['due'], 5) : $t['due']) ?></span>
+          <span class="no"><?= h($d === '' ? '—' : (substr($d, 0, 4) === date('Y') ? substr($d, 5) : $d)) ?></span>
           <a class="pltitle" href="<?= h(planner_task_url($t['id'])) ?>" target="_blank" rel="noopener"><?= h($t['title']) ?></a>
           <span class="meta" style="margin:0"><?= $t['who'] ? h(implode('、', $t['who'])) : '未指派' ?></span>
-          <button onclick="return confirm('把這張任務標成完成？')">完成</button>
+          <?php if ($isDone): ?><span class="tag done"><?= !empty($t['pending']) ? '同步中' : '已完成' ?></span>
+          <?php else: ?><button onclick="return confirm('把這張任務標成完成？')">完成</button><?php endif; ?>
         </form>
         <?php endforeach; ?>
-      </details>
-    <?php endif; endforeach; ?>
+      </div>
+    <?php endforeach; ?>
+    <script>
+    // 數字卡＝分頁：點哪個就在下方顯示哪份清單，再點一次收起；記住上次開的那份（戰情室每分鐘自動重整）
+    (function () {
+      var tiles = document.querySelectorAll('#planner .pltile'), KEY = 'ops-pl-tab';
+      function show(k) {
+        tiles.forEach(function (t) { var on = t.dataset.k === k; t.classList.toggle('on', on); t.setAttribute('aria-expanded', on); });
+        document.querySelectorAll('#planner .plpanel').forEach(function (p) { p.hidden = p.id !== 'pl-' + k; });
+        try { k ? sessionStorage.setItem(KEY, k) : sessionStorage.removeItem(KEY); } catch (e) {}
+      }
+      tiles.forEach(function (t) { t.addEventListener('click', function () { show(t.classList.contains('on') ? '' : t.dataset.k); }); });
+      try { var k = sessionStorage.getItem(KEY); if (k) show(k); } catch (e) {}
+    })();
+    </script>
     <?php endif; ?>
   </div>
 
