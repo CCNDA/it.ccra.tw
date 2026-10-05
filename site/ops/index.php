@@ -26,7 +26,7 @@ function rows($name, $sql, $a = []) {
 function repair_db() {
     $d = db('repair.sqlite');
     $cols = array_column($d->query('PRAGMA table_info(repair)')->fetchAll(PDO::FETCH_ASSOC), 'name');
-    foreach (['handler', 'status_notified_at', 'assignee', 'assigned_by', 'assigned_at', 'planner_task_id', 'planner_assigned_at'] as $c)
+    foreach (['handler', 'status_notified_at', 'assignee', 'assigned_by', 'assigned_at', 'planner_task_id', 'planner_assigned_at', 'first_response_at', 'done_at', 'is_test'] as $c)
         if (!in_array($c, $cols, true)) $d->exec("ALTER TABLE repair ADD COLUMN $c TEXT");
     return $d;
 }
@@ -36,7 +36,7 @@ const AID = ['approve' => '核准', 'reject' => '不核准'];
 function ai_db() {
     $d = db('ai_apply.sqlite');
     $cols = array_column($d->query('PRAGMA table_info(ai_apply)')->fetchAll(PDO::FETCH_ASSOC), 'name');
-    foreach (['tools', 'planner_task_id', 'src', 'decision', 'decision_note', 'decided_by', 'decided_at', 'decision_notified_at'] as $c)
+    foreach (['tools', 'planner_task_id', 'src', 'decision', 'decision_note', 'decided_by', 'decided_at', 'decision_notified_at', 'first_response_at', 'done_at', 'is_test'] as $c)
         if (!in_array($c, $cols, true)) $d->exec("ALTER TABLE ai_apply ADD COLUMN $c TEXT");
     return $d;
 }
@@ -47,13 +47,18 @@ function ensure_cols($file, $table, $cols) {
     foreach ($cols as $c) if (!in_array($c, $have, true)) $d->exec("ALTER TABLE $table ADD COLUMN $c TEXT");
     return $d;
 }
-const FOLLOW = ['decision', 'decision_note', 'decided_by', 'decided_at', 'decision_notified_at'];
+// first_response_at／done_at／is_test：統計用（熊哥 10-05「要考量未來能怎麼做分析」→「先補」）。
+// 第一次有人處置的時間、結案時間、測試資料標記（統計時排除，測試不必再刪資料）。
+const STAT_COLS = ['first_response_at', 'done_at', 'is_test'];
+const FOLLOW = ['decision', 'decision_note', 'decided_by', 'decided_at', 'decision_notified_at', 'first_response_at', 'done_at', 'is_test'];
 // 縮址後台權限：名單＋申請（與 /shortlink/ 同一個資料庫）
 function sl_db() {
     $d = db('shortlink.sqlite');
     $d->exec('CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT, added_at TEXT, added_by TEXT, synced_at TEXT)');
     $d->exec('CREATE TABLE IF NOT EXISTS apply (id INTEGER PRIMARY KEY, created_at TEXT, email TEXT, name TEXT, dept TEXT, purpose TEXT, notified_at TEXT,
       planner_task_id TEXT, decision TEXT, decision_note TEXT, decided_by TEXT, decided_at TEXT, decision_notified_at TEXT)');
+    $have = array_column($d->query('PRAGMA table_info(apply)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+    foreach (STAT_COLS as $c) if (!in_array($c, $have, true)) $d->exec("ALTER TABLE apply ADD COLUMN $c TEXT");
     return $d;
 }
 const MEET_OWNER = 'black@ccra.org.tw';
@@ -79,8 +84,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $rid = (int)($_POST['id'] ?? 0); $who = strtolower($_POST['assignee'] ?? '');
         if (is_it_staff($who)) {
             $d = repair_db();
-            $d->prepare("UPDATE repair SET assignee = ?, assigned_by = ?, assigned_at = ?, status = CASE status WHEN 'new' THEN 'doing' ELSE status END, updated_at = ?, status_notified_at = NULL WHERE id = ?")
-              ->execute([$who, $me, date('c'), date('c'), $rid]);
+            $d->prepare("UPDATE repair SET assignee = ?, assigned_by = ?, assigned_at = ?, status = CASE status WHEN 'new' THEN 'doing' ELSE status END, updated_at = ?, status_notified_at = NULL, first_response_at = COALESCE(first_response_at, ?) WHERE id = ?")
+              ->execute([$who, $me, date('c'), date('c'), date('c'), $rid]);
             $flash = '已指派給 ' . IT_STAFF[$who] . '，一小時內 Planner 任務會掛上負責人，並通知報修同工。';
         }
     }
@@ -88,8 +93,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $rid = (int)($_POST['id'] ?? 0); $st = $_POST['status'] ?? ''; $note = mb_substr(trim($_POST['note'] ?? ''), 0, 300);
         if (isset(RST[$st]) && $st !== 'new') {
             $d = repair_db();
-            $d->prepare('UPDATE repair SET status = ?, note = ?, handler = ?, updated_at = ?, status_notified_at = NULL WHERE id = ?')
-              ->execute([$st, $note, $me, date('c'), $rid]);
+            $d->prepare('UPDATE repair SET status = ?, note = ?, handler = ?, updated_at = ?, status_notified_at = NULL, first_response_at = COALESCE(first_response_at, ?), done_at = ? WHERE id = ?')
+              ->execute([$st, $note, $me, date('c'), date('c'), $st === 'done' ? date('c') : null, $rid]);
             $flash = '已更新，同工會在一小時內收到通知信。';
         }
     }
@@ -101,8 +106,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         elseif (!isset(AID[$dec])) $flash = '請選核准或不核准。';
         else {
             $d = ai_db();
-            $s = $d->prepare('UPDATE ai_apply SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ?, decision_notified_at = NULL WHERE id = ? AND decision IS NULL');
-            $s->execute([$dec, $note, $me, date('c'), $aid]);
+            $s = $d->prepare('UPDATE ai_apply SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ?, decision_notified_at = NULL, first_response_at = COALESCE(first_response_at, ?), done_at = ? WHERE id = ? AND decision IS NULL');
+            $s->execute([$dec, $note, $me, date('c'), date('c'), date('c'), $aid]);
             $flash = $s->rowCount() ? '已' . AID[$dec] . '，申請人一小時內會收到結果通知信。' : '這筆已經有決定了。';
         }
         header('Location: ./?m=' . urlencode($flash) . '#ai', true, 303);
@@ -116,7 +121,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         if ($email !== MEET_OWNER) $flash = '主任有約只有主任能處置。';
         elseif (!$m) $flash = '這筆已經處置過了。';
         elseif ($do === 'confirm') {
-            $d->prepare('UPDATE meet SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ? WHERE id = ?')->execute(['confirm', $note, $me, date('c'), $mid]);
+            $d->prepare('UPDATE meet SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ?, first_response_at = COALESCE(first_response_at, ?), done_at = ? WHERE id = ?')->execute(['confirm', $note, $me, date('c'), date('c'), date('c'), $mid]);
             $flash = '已確認，一小時內寄給 ' . $m['name'] . '。';
         } elseif ($do === 'cancel') {
             if ($note === '') $flash = '取消要寫一句理由（會寄給同工）。';
@@ -124,8 +129,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 [$code, $j] = $m['event_id'] ? graph('POST', '/users/' . MEET_OWNER . '/events/' . rawurlencode($m['event_id']) . '/cancel',
                     ['comment' => $note . "\n\n想另約時間：https://it.ccra.tw/meet/"]) : [404, null];
                 if ($code === 202 || $code === 404) {   // 404＝行事曆上已經不在（被手動刪掉），一樣記成取消，改由信件通知
-                    $d->prepare('UPDATE meet SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ?, decision_notified_at = ? WHERE id = ?')
-                      ->execute(['cancel', $note, $me, date('c'), $code === 202 ? date('c') : null, $mid]);
+                    $d->prepare('UPDATE meet SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ?, decision_notified_at = ?, first_response_at = COALESCE(first_response_at, ?), done_at = ? WHERE id = ?')
+                      ->execute(['cancel', $note, $me, date('c'), $code === 202 ? date('c') : null, date('c'), date('c'), $mid]);
                     $flash = $code === 202 ? '已取消，行事曆邀請已撤回並通知 ' . $m['name'] . '。' : '行事曆上已找不到這個會議，已記成取消，一小時內寄信通知 ' . $m['name'] . '。';
                 } else { error_log('meet cancel ' . $code . ' ' . json_encode($j)); $flash = '撤回行事曆邀請失敗（' . $code . '），請稍後再試或在 Outlook 手動取消。'; }
             }
@@ -162,8 +167,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         elseif (!isset(AID[$dec])) $flash = '請選核准或不核准。';
         else {
             $d = sl_db();
-            $s = $d->prepare('UPDATE apply SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ? WHERE id = ? AND decision IS NULL');
-            $s->execute([$dec, $note, $me, date('c'), $sid]);
+            $s = $d->prepare('UPDATE apply SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ?, first_response_at = COALESCE(first_response_at, ?), done_at = ? WHERE id = ? AND decision IS NULL');
+            $s->execute([$dec, $note, $me, date('c'), date('c'), date('c'), $sid]);
             if ($s->rowCount() && $dec === 'approve') {
                 $r = $d->prepare('SELECT email, name FROM apply WHERE id = ?'); $r->execute([$sid]); $a = $r->fetch(PDO::FETCH_ASSOC);
                 $d->prepare('INSERT OR IGNORE INTO users (email, name, added_at, added_by) VALUES (?,?,?,?)')->execute([strtolower($a['email']), $a['name'], date('c'), $me]);
@@ -179,8 +184,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $d = ensure_cols('cafe_join.sqlite', 'cafe_join', FOLLOW);
         if ($note === '') $flash = '婉拒要寫一句理由（會寄給申請人）。';
         else {
-            $s = $d->prepare('UPDATE cafe_join SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ? WHERE id = ? AND decision IS NULL');
-            $s->execute(['reject', $note, $me, date('c'), $cid]);
+            $s = $d->prepare('UPDATE cafe_join SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ?, first_response_at = COALESCE(first_response_at, ?), done_at = ? WHERE id = ? AND decision IS NULL');
+            $s->execute(['reject', $note, $me, date('c'), date('c'), date('c'), $cid]);
             $flash = $s->rowCount() ? '已婉拒，一小時內寄給申請人。' : '這筆已經處置過了。';
         }
         header('Location: ./?m=' . urlencode($flash) . '#cafe', true, 303);
