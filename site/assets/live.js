@@ -73,7 +73,10 @@
     if (pill) {
       pill.textContent = '';
       pill.appendChild(el('span', 'live-dot'));
-      pill.appendChild(document.createTextNode(j.online.length + ' 人在線上 · ' + (j.dm.length ? j.dm.length + ' 則彈幕' : '來發一則彈幕') + ' ↓'));
+      pill.appendChild(el('b', null, String(j.online.length)));
+      pill.appendChild(el('span', 'lp-tx', ' 人在線上'));   // 手機只留數字，頁首擠不下
+      pill.setAttribute('aria-label', j.online.length + ' 人在線上，看誰在線上、發彈幕');
+      pill.title = '看誰在線上、發彈幕';
       pill.hidden = false;
     }
     people.textContent = '';
