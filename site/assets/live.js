@@ -1,24 +1,32 @@
 // 首頁「誰在線上」與彈幕（熊哥 2026-10-05）。資料來自 /live/api.php，伺服器端說明見該檔。
 // 前景每 10 秒、背景每 60 秒回報一次；彈幕 10 分鐘後消失，本人與資訊部可刪。
-// 🔴 彈幕只在本區塊頂端那條飄，不蓋住頁面其他地方（熊哥 10-05：娛樂互動不能干擾主要任務）。
+// 🔴 彈幕只在頁首那條脈動線上單行跑，填寫與清單放頁尾（熊哥 10-05：「娛樂互動不能干擾主要任務」
+//    「彈幕的文字可放在最上面那條脈動上跑…但填寫放下面沒有問題」）。
 // 不用 WebSocket：站在 Cloudflare Tunnel 後面，百來人輪詢的量很小，少一個要維運的常駐程式。
 (function () {
   var box = document.getElementById('live');
   if (!box) return;
   var API = '/live/api.php';
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var seen = {}, first = true, timer = null, lane = 0, LANES = 3;
+  var seen = {}, timer = null;
 
   box.innerHTML =
     '<div class="live-head"><span class="live-dot" aria-hidden="true"></span><b class="live-n">…</b><span>人在線上</span></div>' +
-    '<div class="dm-layer" aria-hidden="true"></div>' +
     '<div class="live-people" aria-live="polite"></div>' +
     '<form class="live-say" autocomplete="off">' +
     '<input name="text" maxlength="40" placeholder="發一則彈幕，10 分鐘後消失" aria-label="彈幕內容">' +
     '<button type="submit">送出</button>' +
     '<button type="button" class="live-toggle" aria-expanded="false">最近彈幕</button>' +
     '</form><p class="live-msg" role="status"></p><ul class="live-list" hidden></ul>';
-  var layer = box.querySelector('.dm-layer');
+  // 把脈動線包一層，彈幕層疊在它上面；找不到脈動線就不飄（清單照樣看得到）
+  var layer = null, line = document.querySelector('svg.lifeline');
+  if (line) {
+    var wrap = el('div', 'lifeline-wrap');
+    line.parentNode.insertBefore(wrap, line); wrap.appendChild(line);
+    layer = el('div', 'dm-layer'); layer.setAttribute('aria-hidden', 'true');
+    wrap.appendChild(layer);
+  }
+  var nextAt = 0;   // 單行：下一則最早什麼時候可以出發，避免疊在一起
   var people = box.querySelector('.live-people'), n = box.querySelector('.live-n'),
       form = box.querySelector('.live-say'), input = form.querySelector('input'),
       msg = box.querySelector('.live-msg'), list = box.querySelector('.live-list'),
@@ -41,15 +49,18 @@
     return fetch(API + '?a=' + a, { method: 'POST', credentials: 'same-origin', headers: { 'X-Live': '1' }, body: body })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.err || r.status); return j; }); });
   }
-  function fly(d, delay) {
-    if (reduce) return;
+  function fly(d) {
+    if (reduce || !layer) return;
     var b = el('div', 'dm');
     b.appendChild(el('b', null, short(d.name) + '：'));
     b.appendChild(document.createTextNode(d.text));
-    b.style.top = (lane++ % LANES) * 30 + 4 + 'px';
-    b.style.animationDelay = (delay || 0) + 's';
+    var now = Date.now() / 1000, start = Math.max(now, nextAt);
+    b.style.animationDelay = (start - now) + 's';
     b.addEventListener('animationend', function () { b.remove(); });
     layer.appendChild(b);
+    // 下一則等這一則整條進場、再留 1 秒空隙才出發（14 秒走完「線寬＋自己的寬」）
+    var w = b.offsetWidth, W = layer.offsetWidth || 1;
+    nextAt = start + 14 * w / (W + w) + 1;
   }
   var pill = document.getElementById('live-pill');
   if (pill) pill.addEventListener('click', function (e) {
@@ -90,8 +101,7 @@
       list.appendChild(li);
     });
     var fresh = j.dm.filter(function (d) { return !seen[d.id]; });
-    fresh.forEach(function (d, i) { seen[d.id] = 1; fly(d, first ? i * 1.2 : i * 0.6); });
-    first = false;
+    fresh.forEach(function (d) { seen[d.id] = 1; fly(d); });
   }
   function poll() {
     clearTimeout(timer);

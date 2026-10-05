@@ -207,9 +207,10 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 .live-list span{flex:1;min-width:0;overflow-wrap:anywhere}
 .live-list .live-empty{color:var(--muted);border-top:0}
 .live-del{flex:none;border:0;background:none;color:var(--red);font:inherit;font-size:12px;cursor:pointer;padding:0 4px}
-.dm-layer{position:relative;height:96px;margin:10px 0 2px;overflow:hidden;pointer-events:none;border-radius:12px;background:color-mix(in srgb,var(--paper) 55%,transparent);border:1px dashed var(--edge)}
-.dm{position:absolute;left:100%;white-space:nowrap;padding:3px 11px;border-radius:999px;font-size:14px;font-weight:700;color:var(--ink);
-  background:var(--panel);border:1px solid var(--edge);animation:dmfly 11s linear both}
+.lifeline-wrap{position:relative}
+.dm-layer{position:absolute;left:0;right:0;top:6px;height:34px;overflow:hidden;pointer-events:none}
+.dm{position:absolute;left:100%;top:50%;margin-top:-13px;line-height:18px;white-space:nowrap;padding:3px 11px;border-radius:999px;font-size:13px;font-weight:700;color:var(--ink);
+  background:var(--panel);border:1px solid var(--edge);animation:dmfly 14s linear both}
 .dm b{color:var(--green)}
 @keyframes dmfly{from{left:100%;transform:translateX(0)}to{left:0;transform:translateX(-100%)}}
 @media (prefers-reduced-motion:reduce){.dm-layer{display:none}.live-dot{animation:none}}
