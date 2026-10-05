@@ -51,8 +51,20 @@
     b.addEventListener('animationend', function () { b.remove(); });
     layer.appendChild(b);
   }
+  var pill = document.getElementById('live-pill');
+  if (pill) pill.addEventListener('click', function (e) {
+    e.preventDefault();
+    box.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    setTimeout(function () { input.focus({ preventScroll: true }); }, reduce ? 0 : 500);
+  });
   function render(j) {
     n.textContent = j.online.length;
+    if (pill) {
+      pill.textContent = '';
+      pill.appendChild(el('span', 'live-dot'));
+      pill.appendChild(document.createTextNode(j.online.length + ' 人在線上 · ' + (j.dm.length ? j.dm.length + ' 則彈幕' : '來發一則彈幕') + ' ↓'));
+      pill.hidden = false;
+    }
     people.textContent = '';
     j.online.forEach(function (p) {
       var c = el('span', 'live-p' + (p.me ? ' me' : ''));
