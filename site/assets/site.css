@@ -224,3 +224,5 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 @media (max-width:640px){.live-pill{padding:3px 7px;font-size:12.5px;gap:4px}.live-pill .lp-tx{display:none}.bar .wrap{gap:8px}}
 @media (max-width:400px){.bar .wrap{gap:6px}.bar .sep{display:none}.bar img.mark{width:36px;height:36px}.bar .title{font-size:17px}.bar a.ops-link{padding:5px 7px}}
 @media (max-width:340px){.bar .title{display:none}}
+.dm-layer.dm-full{position:fixed;left:0;right:0;top:70px;bottom:0;height:auto;z-index:4}
+.dm-full .dm{top:auto;margin-top:0;font-size:15px;box-shadow:0 2px 10px rgba(0,0,0,.08)}

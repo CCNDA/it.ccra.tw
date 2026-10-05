@@ -2,13 +2,18 @@
 // 前景每 10 秒、背景每 60 秒回報一次；彈幕 10 分鐘後消失，本人與資訊部可刪。
 // 🔴 彈幕只在頁首那條脈動線上單行跑，填寫與清單放頁尾（熊哥 10-05：「娛樂互動不能干擾主要任務」
 //    「彈幕的文字可放在最上面那條脈動上跑…但填寫放下面沒有問題」）。
+// 戰情室 #live 帶 data-full：彈幕改成全頁飄（熊哥 10-05：「戰情室應該也要有彈幕和線上 脈動也要有…彈幕可以全區呈現」）。
+// 戰情室每分鐘自動重新整理，所以「飄過哪幾則」記在 sessionStorage，重新整理後不重播。
 // 不用 WebSocket：站在 Cloudflare Tunnel 後面，百來人輪詢的量很小，少一個要維運的常駐程式。
 (function () {
   var box = document.getElementById('live');
   if (!box) return;
   var API = '/live/api.php';
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var FULL = box.hasAttribute('data-full');
   var seen = {}, timer = null;
+  try { seen = JSON.parse(sessionStorage.getItem('live-seen') || '{}') || {}; } catch (e) { seen = {}; }
+  function saveSeen() { try { sessionStorage.setItem('live-seen', JSON.stringify(seen)); } catch (e) {} }
 
   box.innerHTML =
     '<div class="live-head"><span class="live-dot" aria-hidden="true"></span><b class="live-n">…</b><span>人在線上</span></div>' +
@@ -19,8 +24,11 @@
     '<button type="button" class="live-toggle" aria-expanded="false">最近彈幕</button>' +
     '</form><p class="live-msg" role="status"></p><ul class="live-list" hidden></ul>';
   // 把脈動線包一層，彈幕層疊在它上面；找不到脈動線就不飄（清單照樣看得到）
-  var layer = null, line = document.querySelector('svg.lifeline');
-  if (line) {
+  var layer = null, line = document.querySelector('svg.lifeline'), lane = 0;
+  if (FULL) {
+    layer = el('div', 'dm-layer dm-full'); layer.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(layer);
+  } else if (line) {
     var wrap = el('div', 'lifeline-wrap');
     line.parentNode.insertBefore(wrap, line); wrap.appendChild(line);
     layer = el('div', 'dm-layer'); layer.setAttribute('aria-hidden', 'true');
@@ -54,6 +62,13 @@
     var b = el('div', 'dm');
     b.appendChild(el('b', null, short(d.name) + '：'));
     b.appendChild(document.createTextNode(d.text));
+    if (FULL) {   // 全區：分 8 道錯開，不必排隊
+      b.style.top = (8 + (lane++ % 8) * 11) + '%';
+      b.style.animationDelay = ((lane % 3) * 0.8) + 's';
+      b.addEventListener('animationend', function () { b.remove(); });
+      layer.appendChild(b);
+      return;
+    }
     var now = Date.now() / 1000, start = Math.max(now, nextAt);
     b.style.animationDelay = (start - now) + 's';
     b.addEventListener('animationend', function () { b.remove(); });
@@ -113,6 +128,9 @@
     });
     var fresh = j.dm.filter(function (d) { return !seen[d.id]; });
     fresh.forEach(function (d) { seen[d.id] = 1; fly(d); });
+    if (fresh.length) {   // 只留還在 10 分鐘內的，免得 sessionStorage 越積越多
+      var keep = {}; j.dm.forEach(function (d) { if (seen[d.id]) keep[d.id] = 1; }); seen = keep; saveSeen();
+    }
   }
   function poll() {
     clearTimeout(timer);

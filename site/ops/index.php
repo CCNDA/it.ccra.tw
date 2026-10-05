@@ -184,6 +184,7 @@ function barcls($v) { return $v === null ? '' : ($v >= 90 ? 'hi' : ($v >= 75 ? '
 <link rel="stylesheet" href="/assets/site.css?v=dev">
 <link rel="stylesheet" href="/assets/form.css?v=dev">
 <script src="/assets/whoami.js?v=dev" defer></script>
+<script src="/assets/live.js?v=dev" defer></script>
 <style>
   .autoref{margin:-4px 0 10px;font-size:12.5px;color:var(--muted);text-align:right}
 .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
@@ -244,8 +245,15 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
   <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
   <span class="sep" aria-hidden="true"></span>
   <div class="title">戰情室<small>IT Ops Room</small></div>
+  <a class="live-pill" id="live-pill" href="#live" hidden></a>
 </div></header>
 <main class="wrap">
+  <!-- 脈動線、在線、彈幕與首頁一致（熊哥 10-05：「戰情室應該也要有彈幕和線上 脈動也要有 統一…的呈現和功能」） -->
+  <svg class="lifeline" viewBox="0 0 960 34" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="ll" x1="0" x2="1"><stop offset="0" stop-color="var(--red)"/><stop offset=".5" stop-color="var(--yellow)"/><stop offset="1" stop-color="var(--green)"/></linearGradient></defs>
+    <path stroke="url(#ll)" d="M0 20 H360 L378 20 L392 6 L408 30 L422 2 L436 26 L448 20 H960"/>
+    <circle class="pulse" cx="422" cy="2" r="3"/>
+  </svg>
   <div class="hero">
     <div class="pic">🛰️</div>
     <div><h1><?= h($me) ?>，平安！今天的戰況</h1><p>只有資訊部帳號看得到。每張申請單都在 Planner「資訊部共同事務」有一張任務；指派負責人後掛上人，狀態變更會寄信通知同工。</p></div>
@@ -385,6 +393,8 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
       <?php endif; ?></div>
     <?php endforeach; ?>
   </div>
+
+  <section class="live" id="live" data-full aria-label="誰在線上與彈幕" hidden></section>
 </main>
 <script>
 // 開著就能看最新數字（熊哥 2026-10-04）：每 60 秒重新載入（監控資料快取也是 60 秒）。
@@ -397,7 +407,8 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
     var dirty = [].some.call(document.querySelectorAll('form.act input[type=text], form.act select'), function (f) {
       return f.tagName === 'SELECT' ? !f.options[f.selectedIndex].defaultSelected && f.selectedIndex !== 0 : f.value !== f.defaultValue;
     });
-    return dirty || (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) || document.querySelector('details[open]');
+    var dm = document.querySelector('#live input');   // 彈幕打到一半也不要刷掉
+    return dirty || (dm && dm.value) || (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) || document.querySelector('details[open]');
   }
   function go() {
     if (document.hidden || busy()) return;
