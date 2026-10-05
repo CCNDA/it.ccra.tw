@@ -1,24 +1,24 @@
 // 首頁「誰在線上」與彈幕（熊哥 2026-10-05）。資料來自 /live/api.php，伺服器端說明見該檔。
 // 前景每 10 秒、背景每 60 秒回報一次；彈幕 10 分鐘後消失，本人與資訊部可刪。
+// 🔴 彈幕只在本區塊頂端那條飄，不蓋住頁面其他地方（熊哥 10-05：娛樂互動不能干擾主要任務）。
 // 不用 WebSocket：站在 Cloudflare Tunnel 後面，百來人輪詢的量很小，少一個要維運的常駐程式。
 (function () {
   var box = document.getElementById('live');
   if (!box) return;
   var API = '/live/api.php';
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var seen = {}, first = true, timer = null, lane = 0, LANES = 5;
+  var seen = {}, first = true, timer = null, lane = 0, LANES = 3;
 
   box.innerHTML =
     '<div class="live-head"><span class="live-dot" aria-hidden="true"></span><b class="live-n">…</b><span>人在線上</span></div>' +
+    '<div class="dm-layer" aria-hidden="true"></div>' +
     '<div class="live-people" aria-live="polite"></div>' +
     '<form class="live-say" autocomplete="off">' +
     '<input name="text" maxlength="40" placeholder="發一則彈幕，10 分鐘後消失" aria-label="彈幕內容">' +
     '<button type="submit">送出</button>' +
     '<button type="button" class="live-toggle" aria-expanded="false">最近彈幕</button>' +
     '</form><p class="live-msg" role="status"></p><ul class="live-list" hidden></ul>';
-  var layer = document.createElement('div');
-  layer.className = 'dm-layer'; layer.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(layer);
+  var layer = box.querySelector('.dm-layer');
   var people = box.querySelector('.live-people'), n = box.querySelector('.live-n'),
       form = box.querySelector('.live-say'), input = form.querySelector('input'),
       msg = box.querySelector('.live-msg'), list = box.querySelector('.live-list'),
@@ -30,7 +30,7 @@
   function avatar(p) {
     var s = el('span', 'live-av', short(p.name).charAt(0) || '?');
     if (p.av) {
-      var img = new Image(); img.alt = ''; img.loading = 'lazy';
+      var img = new Image(); img.alt = '';   // 不可設 loading=lazy：還沒放進頁面的圖片永遠不會載入
       img.onload = function () { s.textContent = ''; s.appendChild(img); };
       img.src = '/live/avatar.php?e=' + encodeURIComponent(p.email);
     }
@@ -46,7 +46,7 @@
     var b = el('div', 'dm');
     b.appendChild(el('b', null, short(d.name) + '：'));
     b.appendChild(document.createTextNode(d.text));
-    b.style.top = (lane++ % LANES) * 20 + '%';
+    b.style.top = (lane++ % LANES) * 30 + 4 + 'px';
     b.style.animationDelay = (delay || 0) + 's';
     b.addEventListener('animationend', function () { b.remove(); });
     layer.appendChild(b);

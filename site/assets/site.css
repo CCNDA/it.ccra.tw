@@ -181,7 +181,7 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 @media (max-width:640px){.bar a.ops-link{padding:6px 9px;font-size:12.5px}}
 
 /* 首頁誰在線上＋彈幕（live.js；熊哥 2026-10-05） */
-.live{margin:0 0 22px;padding:12px 14px;border:1px solid var(--edge);border-radius:16px;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.live{margin:26px 0 0;padding:12px 14px;border:1px solid var(--edge);border-radius:16px;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .live-head{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted)}
 .live-head b{color:var(--ink);font-size:15px}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 60%,transparent);animation:livepulse 2s infinite}
@@ -207,10 +207,9 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 .live-list span{flex:1;min-width:0;overflow-wrap:anywhere}
 .live-list .live-empty{color:var(--muted);border-top:0}
 .live-del{flex:none;border:0;background:none;color:var(--red);font:inherit;font-size:12px;cursor:pointer;padding:0 4px}
-.dm-layer{position:fixed;left:0;right:0;top:76px;height:min(34vh,260px);pointer-events:none;overflow:hidden;z-index:4}
-.dm{position:absolute;left:100%;white-space:nowrap;padding:4px 12px;border-radius:999px;font-size:15px;font-weight:700;color:var(--ink);
-  background:color-mix(in srgb,var(--paper) 78%,transparent);border:1px solid var(--edge);box-shadow:0 2px 10px rgba(0,0,0,.08);
-  animation:dmfly 13s linear both}
+.dm-layer{position:relative;height:96px;margin:10px 0 2px;overflow:hidden;pointer-events:none;border-radius:12px;background:color-mix(in srgb,var(--paper) 55%,transparent);border:1px dashed var(--edge)}
+.dm{position:absolute;left:100%;white-space:nowrap;padding:3px 11px;border-radius:999px;font-size:14px;font-weight:700;color:var(--ink);
+  background:var(--panel);border:1px solid var(--edge);animation:dmfly 11s linear both}
 .dm b{color:var(--green)}
-@keyframes dmfly{from{transform:translateX(0)}to{transform:translateX(calc(-100vw - 100%))}}
+@keyframes dmfly{from{left:100%;transform:translateX(0)}to{left:0;transform:translateX(-100%)}}
 @media (prefers-reduced-motion:reduce){.dm-layer{display:none}.live-dot{animation:none}}
