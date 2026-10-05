@@ -125,6 +125,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         header('Location: ./?m=' . urlencode($flash) . '#meet', true, 303);
         exit;
     }
+    elseif (($_POST['act'] ?? '') === 'ptask') {
+        // Planner 任務在戰情室直接「完成」（熊哥 10-05：「需要能點選 阿不然怎麼消除任務」）。
+        // 主機沒有 Planner 權限：先記進佇列並立刻從清單隱藏，IT大蘇本機 planner_stats.py 下一輪標完成。
+        $tid = preg_replace('/[^A-Za-z0-9_\-]/', '', (string)($_POST['tid'] ?? '')); $note = mb_substr(trim($_POST['note'] ?? ''), 0, 200);
+        if ($tid !== '') {
+            $d = db('planner_actions.sqlite');
+            $d->exec('CREATE TABLE IF NOT EXISTS act (id INTEGER PRIMARY KEY, task_id TEXT, action TEXT, note TEXT, by_name TEXT, by_email TEXT, at TEXT, done_at TEXT, result TEXT)');
+            $d->prepare('INSERT INTO act (task_id,action,note,by_name,by_email,at) VALUES (?,?,?,?,?,?)')->execute([$tid, 'complete', $note, $me, $email, date('c')]);
+            $flash = '已標記完成，清單已移除；Planner 會在下一輪同步（最慢一小時）。要立刻生效可點任務名稱在 Planner 打勾。';
+        }
+        header('Location: ./?m=' . urlencode($flash) . '#planner', true, 303);
+        exit;
+    }
     elseif (($_POST['act'] ?? '') === 'cafe') {
         // 咖啡廳：加入由成員同步自動偵測；這裡只處理「婉拒」（附理由，一小時內寄給申請人）
         $cid = (int)($_POST['id'] ?? 0); $note = mb_substr(trim($_POST['note'] ?? ''), 0, 300);
@@ -154,6 +167,9 @@ $cafePending = array_filter($cafe, fn($r) => empty($r['decision']) && !in_array(
 // Planner 任務統計（熊哥 10-05：「戰情室 需要顯示目前 planner 任務狀態 今日 今日完成 當月 當月完成 逾期」）。
 // 主機沒有 Planner 權限，由 IT大蘇本機 planner_stats.py 每小時算好推上來，這裡只讀檔。
 $pl = json_decode((string)@file_get_contents(STATE_DIR . '/planner_stats.json'), true);
+$plPending = is_file(STATE_DIR . '/planner_actions.sqlite')
+    ? array_column(db('planner_actions.sqlite')->query("SELECT task_id FROM act WHERE done_at IS NULL")->fetchAll(PDO::FETCH_ASSOC), 'task_id') : [];
+function planner_task_url($id) { return 'https://planner.cloud.microsoft/webui/plan/WLjIX4pJX0aot3QF96N06MkADMal/view/board/task/' . rawurlencode($id) . '?tid=a18de7ab-5b49-41ac-8831-357e9b0d5817'; }
 const PLANNER_URL = 'https://planner.cloud.microsoft/webui/plan/WLjIX4pJX0aot3QF96N06MkADMal/view/board?tid=a18de7ab-5b49-41ac-8831-357e9b0d5817';
 $meets = [];
 if (is_file(STATE_DIR . '/meet.sqlite')) { $s = ensure_cols('meet.sqlite', 'meet', FOLLOW)->prepare('SELECT * FROM meet WHERE start >= ? ORDER BY start LIMIT 30'); $s->execute([date('c', strtotime('today'))]); $meets = $s->fetchAll(PDO::FETCH_ASSOC); }
@@ -247,9 +263,13 @@ table.srv tr.warnrow td:first-child{border-left:3px solid var(--red);padding-lef
 table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:hover{text-decoration:underline}
 .kpi.plk{grid-template-columns:repeat(5,1fr)}
 .kpi.plk{margin-top:12px}
-.kpi.plk > span{display:block;padding:12px 14px;border-radius:16px;border:1px solid var(--edge);background:var(--panel);color:var(--ink)}
-.kpi.plk > span > span{color:var(--muted)}
-.kpi.plk > span.hot{border-color:color-mix(in srgb,var(--red) 50%,transparent)}
+.kpi.plk > a{padding:12px 14px;border-radius:16px}
+.kpi.plk > a.hot{border-color:color-mix(in srgb,var(--red) 50%,transparent)}
+.plrow{flex-wrap:nowrap;margin-top:4px}
+.plrow .pltitle{flex:1 1 auto;min-width:0;color:var(--ink);text-decoration:none}
+.plrow .pltitle:hover{text-decoration:underline}
+.plrow button{flex:none;padding:5px 10px}
+@media (max-width:640px){.plrow{flex-wrap:wrap}}
 @media (max-width:640px){.kpi.plk{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
@@ -286,16 +306,25 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
     <div class="sec"><h2>📋 Planner 任務（資訊部共同事務）</h2><small><?= $pl ? '更新於 ' . h(substr($pl['updated_at'], 11, 5)) . '・每小時更新' : '尚無資料' ?>・<a href="<?= h(PLANNER_URL) ?>" target="_blank" rel="noopener">開啟 Planner</a></small></div>
     <?php if ($pl): ?>
     <div class="kpi plk">
-      <span><b><?= (int)$pl['today'] ?></b><span>今日到期</span></span>
-      <span><b><?= (int)$pl['today_done'] ?></b><span>今日完成</span></span>
-      <span><b><?= (int)$pl['month'] ?></b><span>當月到期</span></span>
-      <span><b><?= (int)$pl['month_done'] ?></b><span>當月完成</span></span>
-      <span class="<?= $pl['overdue'] ? 'hot' : '' ?>"><b><?= (int)$pl['overdue'] ?></b><span>逾期</span></span>
+      <a href="#pl-today_list" onclick="var d=document.getElementById('pl-today_list');if(d)d.open=true"><b><?= (int)$pl['today'] ?></b><span>今日到期</span></a>
+      <a href="<?= h(PLANNER_URL) ?>" target="_blank" rel="noopener"><b><?= (int)$pl['today_done'] ?></b><span>今日完成</span></a>
+      <a href="<?= h(PLANNER_URL) ?>" target="_blank" rel="noopener"><b><?= (int)$pl['month'] ?></b><span>當月到期</span></a>
+      <a href="<?= h(PLANNER_URL) ?>" target="_blank" rel="noopener"><b><?= (int)$pl['month_done'] ?></b><span>當月完成</span></a>
+      <a href="#pl-overdue_list" class="<?= $pl['overdue'] ? 'hot' : '' ?>" onclick="var d=document.getElementById('pl-overdue_list');if(d)d.open=true"><b><?= (int)$pl['overdue'] ?></b><span>逾期</span></a>
     </div>
     <p class="meta" style="margin:8px 0 0">未完成共 <?= (int)$pl['open_total'] ?> 件，其中 <?= (int)$pl['no_due'] ?> 件沒有設到期日。</p>
     <?php foreach ([['overdue_list', '逾期清單'], ['today_list', '今日到期']] as [$k, $lab]): if (!empty($pl[$k])): ?>
-      <details><summary><?= h($lab) ?>（<?= count($pl[$k]) ?>）</summary>
-        <?php foreach ($pl[$k] as $t): ?><p class="desc"><span class="no"><?= h(substr($t['due'], 0, 4) === date('Y') ? substr($t['due'], 5) : $t['due']) ?></span> <?= h($t['title']) ?><?= $t['who'] ? '｜' . h(implode('、', $t['who'])) : '｜未指派' ?></p><?php endforeach; ?>
+      <?php $rows = array_values(array_filter($pl[$k], fn($t) => !in_array($t['id'], $plPending, true))); ?>
+      <details id="pl-<?= h($k) ?>"><summary><?= h($lab) ?>（<?= count($rows) ?>）</summary>
+        <?php foreach ($rows as $t): ?>
+        <form method="post" class="act plrow">
+          <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="ptask"><input type="hidden" name="tid" value="<?= h($t['id']) ?>">
+          <span class="no"><?= h(substr($t['due'], 0, 4) === date('Y') ? substr($t['due'], 5) : $t['due']) ?></span>
+          <a class="pltitle" href="<?= h(planner_task_url($t['id'])) ?>" target="_blank" rel="noopener"><?= h($t['title']) ?></a>
+          <span class="meta" style="margin:0"><?= $t['who'] ? h(implode('、', $t['who'])) : '未指派' ?></span>
+          <button onclick="return confirm('把這張任務標成完成？')">完成</button>
+        </form>
+        <?php endforeach; ?>
       </details>
     <?php endif; endforeach; ?>
     <?php endif; ?>
