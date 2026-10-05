@@ -43,8 +43,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->exec('CREATE TABLE IF NOT EXISTS ai_apply (id INTEGER PRIMARY KEY, created_at TEXT, email TEXT, name TEXT, dept TEXT, uses TEXT, why TEXT, pii TEXT, notified_at TEXT)');
         $cols = array_column($db->query('PRAGMA table_info(ai_apply)')->fetchAll(PDO::FETCH_ASSOC), 'name');
         if (!in_array('tools', $cols, true)) $db->exec('ALTER TABLE ai_apply ADD COLUMN tools TEXT');
-        $st = $db->prepare('INSERT INTO ai_apply (created_at,email,name,dept,tools,uses,why,pii) VALUES (?,?,?,?,?,?,?,?)');
-        $st->execute([date('c'), $email, $v['name'], $v['dept'], implode('、', $v['tools']), $v['plan'], $v['why'], $v['pii']]);
+        // 防重複送出（2026-10-05 流程實測抓到：這頁送出後沒有轉址，重新整理或連按兩下就會多一筆，主任與主管各多收一封信）。
+        // 同一人、同樣工具、還在審核中的申請已存在就不再新增，畫面照樣顯示「已送出」。
+        if (!in_array('decision', $cols, true)) $db->exec('ALTER TABLE ai_apply ADD COLUMN decision TEXT');
+        $dup = $db->prepare('SELECT COUNT(*) FROM ai_apply WHERE email = ? AND tools = ? AND decision IS NULL');
+        $dup->execute([$email, implode('、', $v['tools'])]);
+        if (!$dup->fetchColumn()) {
+            $st = $db->prepare('INSERT INTO ai_apply (created_at,email,name,dept,tools,uses,why,pii) VALUES (?,?,?,?,?,?,?,?)');
+            $st->execute([date('c'), $email, $v['name'], $v['dept'], implode('、', $v['tools']), $v['plan'], $v['why'], $v['pii']]);
+        }
         $done = true;
     }
 }

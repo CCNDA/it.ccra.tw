@@ -156,7 +156,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             if ($u === AI_APPROVER) $flash = '主任自己的權限不能移除。';
             else {
                 $s = sl_db()->prepare('DELETE FROM users WHERE email = ?'); $s->execute([$u]);
-                $flash = $s->rowCount() ? "已移除 $u，一小時內生效。" : '名單裡沒有這個帳號。';
+                $flash = $s->rowCount() ? "已移除 {$u}，一小時內生效。" : '名單裡沒有這個帳號。';
             }
         }
         elseif (!isset(AID[$dec])) $flash = '請選核准或不核准。';
