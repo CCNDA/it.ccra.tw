@@ -151,6 +151,10 @@ $ai = is_file(STATE_DIR . '/ai_apply.sqlite')
 $members = json_decode((string)@file_get_contents(STATE_DIR . '/cafe_members.json'), true) ?: [];
 $cafe = is_file(STATE_DIR . '/cafe_join.sqlite') ? ensure_cols('cafe_join.sqlite', 'cafe_join', FOLLOW)->query('SELECT * FROM cafe_join ORDER BY id DESC LIMIT 30')->fetchAll(PDO::FETCH_ASSOC) : [];
 $cafePending = array_filter($cafe, fn($r) => empty($r['decision']) && !in_array(strtolower($r['email']), $members, true));
+// Planner 任務統計（熊哥 10-05：「戰情室 需要顯示目前 planner 任務狀態 今日 今日完成 當月 當月完成 逾期」）。
+// 主機沒有 Planner 權限，由 IT大蘇本機 planner_stats.py 每小時算好推上來，這裡只讀檔。
+$pl = json_decode((string)@file_get_contents(STATE_DIR . '/planner_stats.json'), true);
+const PLANNER_URL = 'https://planner.cloud.microsoft/webui/plan/WLjIX4pJX0aot3QF96N06MkADMal/view/board?tid=a18de7ab-5b49-41ac-8831-357e9b0d5817';
 $meets = [];
 if (is_file(STATE_DIR . '/meet.sqlite')) { $s = ensure_cols('meet.sqlite', 'meet', FOLLOW)->prepare('SELECT * FROM meet WHERE start >= ? ORDER BY start LIMIT 30'); $s->execute([date('c', strtotime('today'))]); $meets = $s->fetchAll(PDO::FETCH_ASSOC); }
 $wd = ['日', '一', '二', '三', '四', '五', '六'];
@@ -241,6 +245,12 @@ table.srv td.num{font:500 13.5px/1.4 "IBM Plex Mono",ui-monospace,monospace;whit
 table.srv td.mid{color:var(--yellow);font-weight:700} table.srv td.hi{color:var(--red);font-weight:800}
 table.srv tr.warnrow td:first-child{border-left:3px solid var(--red);padding-left:8px}
 table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:hover{text-decoration:underline}
+.kpi.plk{grid-template-columns:repeat(5,1fr)}
+.kpi.plk{margin-top:12px}
+.kpi.plk > span{display:block;padding:12px 14px;border-radius:16px;border:1px solid var(--edge);background:var(--panel);color:var(--ink)}
+.kpi.plk > span > span{color:var(--muted)}
+.kpi.plk > span.hot{border-color:color-mix(in srgb,var(--red) 50%,transparent)}
+@media (max-width:640px){.kpi.plk{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
@@ -270,6 +280,25 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
     <a href="#repair"><b><?= count(array_filter($openRep, fn($r) => $r['status'] === 'doing')) ?></b><span>報修處理中</span></a>
     <a href="#cafe"><b><?= count($cafePending) ?></b><span>咖啡廳待加入</span></a>
     <a href="#meet"><b><?= count($meets) ?></b><span>主任有約（今天起）</span></a>
+  </div>
+
+  <div class="box" id="planner">
+    <div class="sec"><h2>📋 Planner 任務（資訊部共同事務）</h2><small><?= $pl ? '更新於 ' . h(substr($pl['updated_at'], 11, 5)) . '・每小時更新' : '尚無資料' ?>・<a href="<?= h(PLANNER_URL) ?>" target="_blank" rel="noopener">開啟 Planner</a></small></div>
+    <?php if ($pl): ?>
+    <div class="kpi plk">
+      <span><b><?= (int)$pl['today'] ?></b><span>今日到期</span></span>
+      <span><b><?= (int)$pl['today_done'] ?></b><span>今日完成</span></span>
+      <span><b><?= (int)$pl['month'] ?></b><span>當月到期</span></span>
+      <span><b><?= (int)$pl['month_done'] ?></b><span>當月完成</span></span>
+      <span class="<?= $pl['overdue'] ? 'hot' : '' ?>"><b><?= (int)$pl['overdue'] ?></b><span>逾期</span></span>
+    </div>
+    <p class="meta" style="margin:8px 0 0">未完成共 <?= (int)$pl['open_total'] ?> 件，其中 <?= (int)$pl['no_due'] ?> 件沒有設到期日。</p>
+    <?php foreach ([['overdue_list', '逾期清單'], ['today_list', '今日到期']] as [$k, $lab]): if (!empty($pl[$k])): ?>
+      <details><summary><?= h($lab) ?>（<?= count($pl[$k]) ?>）</summary>
+        <?php foreach ($pl[$k] as $t): ?><p class="desc"><span class="no"><?= h(substr($t['due'], 0, 4) === date('Y') ? substr($t['due'], 5) : $t['due']) ?></span> <?= h($t['title']) ?><?= $t['who'] ? '｜' . h(implode('、', $t['who'])) : '｜未指派' ?></p><?php endforeach; ?>
+      </details>
+    <?php endif; endforeach; ?>
+    <?php endif; ?>
   </div>
 
   <a class="box hostbox <?= $bad ? 'bad' : 'good' ?>" href="/status/" id="hosts">
