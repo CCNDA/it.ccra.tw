@@ -219,6 +219,8 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 .live-pill[hidden]{display:none}
 .live-pill:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .live-pill b{color:var(--ink)}
+.bar .ops-link + .live-pill{margin-left:8px}
+.live-pill.push{margin-left:auto}
 @media (max-width:640px){.live-pill{padding:3px 7px;font-size:12.5px;gap:4px}.live-pill .lp-tx{display:none}.bar .wrap{gap:8px}}
 @media (max-width:400px){.bar .wrap{gap:6px}.bar .sep{display:none}.bar img.mark{width:36px;height:36px}.bar .title{font-size:17px}.bar a.ops-link{padding:5px 7px}}
 @media (max-width:340px){.bar .title{display:none}}

@@ -78,6 +78,14 @@
       pill.setAttribute('aria-label', j.online.length + ' 人在線上，看誰在線上、發彈幕');
       pill.title = '看誰在線上、發彈幕';
       pill.hidden = false;
+      // 放在戰情室與身分鈕之間（熊哥 10-05：「放在戰情室和頭像的中間線上更順」）。
+      // 身分鈕由 whoami.js 非同步插入，所以每次都檢查一次位置
+      var me = pill.parentNode && pill.parentNode.querySelector('a.me');
+      if (me && pill.nextSibling !== me) {
+        me.parentNode.insertBefore(pill, me);
+        me.style.marginLeft = '8px';
+        pill.classList.toggle('push', !pill.parentNode.querySelector('.ops-link'));
+      }
     }
     people.textContent = '';
     j.online.forEach(function (p) {
