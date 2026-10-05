@@ -6,6 +6,7 @@ require '/var/www/it-lib/access.php';
 require '/var/www/it-lib/itstaff.php';
 require '/var/www/it-lib/uptime.php';
 require '/var/www/it-lib/zabbix.php';
+require '/var/www/it-lib/graph.php';   // 主任有約取消時撤回行事曆邀請（同 /meet/ 那支的專用 App，只有行事曆權限）
 $id = access_identity();
 $email = strtolower($id['email']);
 if (!is_it_staff($email)) { http_response_code(403); exit('戰情室只開放給資訊部帳號。'); }
@@ -39,6 +40,15 @@ function ai_db() {
         if (!in_array($c, $cols, true)) $d->exec("ALTER TABLE ai_apply ADD COLUMN $c TEXT");
     return $d;
 }
+// 後續處置欄位：主任有約、咖啡廳也要能處置（熊哥 10-05：「約主任有約 資訊報修 申請咖啡廳 都可以有後續動作」）
+function ensure_cols($file, $table, $cols) {
+    $d = db($file);
+    $have = array_column($d->query("PRAGMA table_info($table)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    foreach ($cols as $c) if (!in_array($c, $have, true)) $d->exec("ALTER TABLE $table ADD COLUMN $c TEXT");
+    return $d;
+}
+const FOLLOW = ['decision', 'decision_note', 'decided_by', 'decided_at', 'decision_notified_at'];
+const MEET_OWNER = 'black@ccra.org.tw';
 function ticket_no($r) { return 'R' . date('ymd', strtotime($r['created_at'])) . '-' . str_pad((string)$r['id'], 3, '0', STR_PAD_LEFT); }
 function ago($t) {
     $s = time() - strtotime($t);
@@ -90,6 +100,44 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         header('Location: ./?m=' . urlencode($flash) . '#ai', true, 303);
         exit;
     }
+    elseif (($_POST['act'] ?? '') === 'meet') {
+        // 主任有約：只有主任能處置。確認＝寄一句話給同工；取消＝撤回行事曆邀請（Graph 會把取消通知連同理由寄給同工）
+        $mid = (int)($_POST['id'] ?? 0); $do = $_POST['do'] ?? ''; $note = mb_substr(trim($_POST['note'] ?? ''), 0, 300);
+        $d = ensure_cols('meet.sqlite', 'meet', FOLLOW);
+        $s = $d->prepare('SELECT * FROM meet WHERE id = ? AND decision IS NULL'); $s->execute([$mid]); $m = $s->fetch(PDO::FETCH_ASSOC);
+        if ($email !== MEET_OWNER) $flash = '主任有約只有主任能處置。';
+        elseif (!$m) $flash = '這筆已經處置過了。';
+        elseif ($do === 'confirm') {
+            $d->prepare('UPDATE meet SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ? WHERE id = ?')->execute(['confirm', $note, $me, date('c'), $mid]);
+            $flash = '已確認，一小時內寄給 ' . $m['name'] . '。';
+        } elseif ($do === 'cancel') {
+            if ($note === '') $flash = '取消要寫一句理由（會寄給同工）。';
+            else {
+                [$code, $j] = $m['event_id'] ? graph('POST', '/users/' . MEET_OWNER . '/events/' . rawurlencode($m['event_id']) . '/cancel',
+                    ['comment' => $note . "\n\n想另約時間：https://it.ccra.tw/meet/"]) : [404, null];
+                if ($code === 202 || $code === 404) {   // 404＝行事曆上已經不在（被手動刪掉），一樣記成取消，改由信件通知
+                    $d->prepare('UPDATE meet SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ?, decision_notified_at = ? WHERE id = ?')
+                      ->execute(['cancel', $note, $me, date('c'), $code === 202 ? date('c') : null, $mid]);
+                    $flash = $code === 202 ? '已取消，行事曆邀請已撤回並通知 ' . $m['name'] . '。' : '行事曆上已找不到這個會議，已記成取消，一小時內寄信通知 ' . $m['name'] . '。';
+                } else { error_log('meet cancel ' . $code . ' ' . json_encode($j)); $flash = '撤回行事曆邀請失敗（' . $code . '），請稍後再試或在 Outlook 手動取消。'; }
+            }
+        }
+        header('Location: ./?m=' . urlencode($flash) . '#meet', true, 303);
+        exit;
+    }
+    elseif (($_POST['act'] ?? '') === 'cafe') {
+        // 咖啡廳：加入由成員同步自動偵測；這裡只處理「婉拒」（附理由，一小時內寄給申請人）
+        $cid = (int)($_POST['id'] ?? 0); $note = mb_substr(trim($_POST['note'] ?? ''), 0, 300);
+        $d = ensure_cols('cafe_join.sqlite', 'cafe_join', FOLLOW);
+        if ($note === '') $flash = '婉拒要寫一句理由（會寄給申請人）。';
+        else {
+            $s = $d->prepare('UPDATE cafe_join SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ? WHERE id = ? AND decision IS NULL');
+            $s->execute(['reject', $note, $me, date('c'), $cid]);
+            $flash = $s->rowCount() ? '已婉拒，一小時內寄給申請人。' : '這筆已經處置過了。';
+        }
+        header('Location: ./?m=' . urlencode($flash) . '#cafe', true, 303);
+        exit;
+    }
     header('Location: ./?m=' . urlencode($flash) . '#repair', true, 303);
     exit;
 }
@@ -101,9 +149,10 @@ $openRep = array_filter($repairs, fn($r) => $r['status'] !== 'done');
 $ai = is_file(STATE_DIR . '/ai_apply.sqlite')
     ? ai_db()->query('SELECT * FROM ai_apply ORDER BY (decision IS NULL) DESC, id DESC LIMIT 30')->fetchAll(PDO::FETCH_ASSOC) : [];
 $members = json_decode((string)@file_get_contents(STATE_DIR . '/cafe_members.json'), true) ?: [];
-$cafe = rows('cafe_join.sqlite', 'SELECT * FROM cafe_join ORDER BY id DESC LIMIT 30');
-$cafePending = array_filter($cafe, fn($r) => !in_array(strtolower($r['email']), $members, true));
-$meets = rows('meet.sqlite', 'SELECT * FROM meet WHERE start >= ? ORDER BY start LIMIT 30', [date('c', strtotime('today'))]);
+$cafe = is_file(STATE_DIR . '/cafe_join.sqlite') ? ensure_cols('cafe_join.sqlite', 'cafe_join', FOLLOW)->query('SELECT * FROM cafe_join ORDER BY id DESC LIMIT 30')->fetchAll(PDO::FETCH_ASSOC) : [];
+$cafePending = array_filter($cafe, fn($r) => empty($r['decision']) && !in_array(strtolower($r['email']), $members, true));
+$meets = [];
+if (is_file(STATE_DIR . '/meet.sqlite')) { $s = ensure_cols('meet.sqlite', 'meet', FOLLOW)->prepare('SELECT * FROM meet WHERE start >= ? ORDER BY start LIMIT 30'); $s->execute([date('c', strtotime('today'))]); $meets = $s->fetchAll(PDO::FETCH_ASSOC); }
 $wd = ['日', '一', '二', '三', '四', '五', '六'];
 // 網站監控摘要（UptimeRobot；熊哥 10-04：戰情室也要顯示，詳情再進網站監控頁）
 [$up, $upErr] = uptime_data();
@@ -268,6 +317,7 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
         <form method="post" class="act">
           <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="repair"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
           <input type="text" name="note" maxlength="300" placeholder="給同工的一句話（會寫進通知信）" value="<?= h($r['note']) ?>">
+          <button name="status" value="doing">更新進度</button>
           <button name="status" value="done">已完成</button>
         </form>
         <?php endif; ?>
@@ -301,19 +351,38 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
   </div>
 
   <div class="box" id="cafe">
-    <div class="sec"><h2>☕ 咖啡廳加入申請</h2><small>在 Teams 加入頻道後，這裡會自動變成「已加入」</small></div>
+    <div class="sec"><h2>☕ 咖啡廳加入申請</h2><small>在 Teams 加入頻道後自動變成「已加入」；不同意就婉拒並寫理由</small></div>
     <?php if (!$cafe): ?><p class="empty">目前沒有申請。</p><?php endif; ?>
     <?php foreach ($cafe as $r): $in = in_array(strtolower($r['email']), $members, true); ?>
       <div class="item"><div class="row"><span class="tag <?= $in ? 'done' : 'new' ?>"><?= $in ? '已加入' : '待加入' ?></span><span class="ttl"><?= h($r['name']) ?></span><span class="meta" style="margin:0">（<?= h($r['dept']) ?>）<?= h($r['email']) ?>｜<?= h(ago($r['created_at'])) ?></span></div>
-      <?php if ($r['note']): ?><p class="desc"><?= h($r['note']) ?></p><?php endif; ?></div>
+      <?php if ($r['note']): ?><p class="desc"><?= h($r['note']) ?></p><?php endif; ?>
+      <?php if (!empty($r['decision'])): ?>
+        <div class="meta"><span class="tag high">已婉拒</span> <?= h($r['decided_by']) ?>｜<?= h(ago($r['decided_at'])) ?>｜理由：<?= h($r['decision_note']) ?>｜<?= empty($r['decision_notified_at']) ? '通知信待寄' : '已通知申請人' ?></div>
+      <?php elseif (!$in): ?>
+        <form method="post" class="act">
+          <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="cafe"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+          <input type="text" name="note" maxlength="300" placeholder="婉拒理由（會寄給申請人）" required>
+          <button name="do" value="reject" onclick="return confirm('確定婉拒？')">婉拒</button>
+        </form>
+      <?php endif; ?></div>
     <?php endforeach; ?>
   </div>
 
   <div class="box" id="meet">
-    <div class="sec"><h2>📅 與資訊部主任有約</h2><small>今天起的預約</small></div>
+    <div class="sec"><h2>📅 與資訊部主任有約</h2><small>今天起的預約；主任可確認（附一句話）或取消／請改期（撤回邀請並附理由）</small></div>
     <?php if (!$meets): ?><p class="empty">目前沒有預約。</p><?php endif; ?>
     <?php foreach ($meets as $r): $s = strtotime($r['start']); ?>
-      <div class="item"><div class="row"><span class="no"><?= h(date('n/j', $s)) ?>（<?= $wd[(int)date('w', $s)] ?>）<?= h(date('H:i', $s)) ?></span><span class="ttl"><?= h($r['name']) ?></span><span class="meta" style="margin:0"><?= h($r['topic']) ?>｜<?= h($r['mode']) ?></span></div></div>
+      <div class="item"><div class="row"><span class="no"><?= h(date('n/j', $s)) ?>（<?= $wd[(int)date('w', $s)] ?>）<?= h(date('H:i', $s)) ?></span><span class="ttl"><?= h($r['name']) ?></span><span class="meta" style="margin:0"><?= h($r['topic']) ?>｜<?= h($r['mode']) ?></span></div>
+      <?php if (!empty($r['decision'])): ?>
+        <div class="meta"><span class="tag <?= $r['decision'] === 'confirm' ? 'done' : 'high' ?>"><?= $r['decision'] === 'confirm' ? '已確認' : '已取消' ?></span> <?= h(ago($r['decided_at'])) ?><?= ($r['decision_note'] ?? '') !== '' ? '｜' . h($r['decision_note']) : '' ?>｜<?= empty($r['decision_notified_at']) ? '通知待寄' : '已通知' ?></div>
+      <?php elseif ($email === MEET_OWNER): ?>
+        <form method="post" class="act">
+          <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="meet"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+          <input type="text" name="note" maxlength="300" placeholder="給同工的一句話（取消時必填）">
+          <button class="ok" name="do" value="confirm">確認</button>
+          <button name="do" value="cancel" onclick="return confirm('確定取消並撤回行事曆邀請？')">取消／請改期</button>
+        </form>
+      <?php endif; ?></div>
     <?php endforeach; ?>
   </div>
 </main>
