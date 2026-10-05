@@ -48,6 +48,14 @@ function ensure_cols($file, $table, $cols) {
     return $d;
 }
 const FOLLOW = ['decision', 'decision_note', 'decided_by', 'decided_at', 'decision_notified_at'];
+// 縮址後台權限：名單＋申請（與 /shortlink/ 同一個資料庫）
+function sl_db() {
+    $d = db('shortlink.sqlite');
+    $d->exec('CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT, added_at TEXT, added_by TEXT, synced_at TEXT)');
+    $d->exec('CREATE TABLE IF NOT EXISTS apply (id INTEGER PRIMARY KEY, created_at TEXT, email TEXT, name TEXT, dept TEXT, purpose TEXT, notified_at TEXT,
+      planner_task_id TEXT, decision TEXT, decision_note TEXT, decided_by TEXT, decided_at TEXT, decision_notified_at TEXT)');
+    return $d;
+}
 const MEET_OWNER = 'black@ccra.org.tw';
 function ticket_no($r) { return 'R' . date('ymd', strtotime($r['created_at'])) . '-' . str_pad((string)$r['id'], 3, '0', STR_PAD_LEFT); }
 function ago($t) {
@@ -138,6 +146,33 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         header('Location: ./?m=' . urlencode($flash) . '#planner', true, 303);
         exit;
     }
+    elseif (($_POST['act'] ?? '') === 'sl') {
+        // 縮址後台權限（熊哥 10-05）：主任核准／不核准申請、移除使用者。這台只改名單；
+        // 同步到 Cloudflare Access 與 YOURLS、寄結果信由 IT大蘇本機 shortlink_sync.py 下一輪處理。
+        $sid = (int)($_POST['id'] ?? 0); $dec = $_POST['decision'] ?? ''; $note = mb_substr(trim($_POST['note'] ?? ''), 0, 500);
+        if ($email !== AI_APPROVER) $flash = '縮址權限只有主任能核准。';
+        elseif ($dec === 'remove') {
+            $u = strtolower(trim($_POST['user'] ?? ''));
+            if ($u === AI_APPROVER) $flash = '主任自己的權限不能移除。';
+            else {
+                $s = sl_db()->prepare('DELETE FROM users WHERE email = ?'); $s->execute([$u]);
+                $flash = $s->rowCount() ? "已移除 $u，一小時內生效。" : '名單裡沒有這個帳號。';
+            }
+        }
+        elseif (!isset(AID[$dec])) $flash = '請選核准或不核准。';
+        else {
+            $d = sl_db();
+            $s = $d->prepare('UPDATE apply SET decision = ?, decision_note = ?, decided_by = ?, decided_at = ? WHERE id = ? AND decision IS NULL');
+            $s->execute([$dec, $note, $me, date('c'), $sid]);
+            if ($s->rowCount() && $dec === 'approve') {
+                $r = $d->prepare('SELECT email, name FROM apply WHERE id = ?'); $r->execute([$sid]); $a = $r->fetch(PDO::FETCH_ASSOC);
+                $d->prepare('INSERT OR IGNORE INTO users (email, name, added_at, added_by) VALUES (?,?,?,?)')->execute([strtolower($a['email']), $a['name'], date('c'), $me]);
+            }
+            $flash = $s->rowCount() ? '已' . AID[$dec] . '，一小時內生效並寄信通知申請人。' : '這筆已經有決定了。';
+        }
+        header('Location: ./?m=' . urlencode($flash) . '#shortlink', true, 303);
+        exit;
+    }
     elseif (($_POST['act'] ?? '') === 'cafe') {
         // 咖啡廳：加入由成員同步自動偵測；這裡只處理「婉拒」（附理由，一小時內寄給申請人）
         $cid = (int)($_POST['id'] ?? 0); $note = mb_substr(trim($_POST['note'] ?? ''), 0, 300);
@@ -171,6 +206,9 @@ $plPending = is_file(STATE_DIR . '/planner_actions.sqlite')
     ? array_column(db('planner_actions.sqlite')->query("SELECT task_id FROM act WHERE done_at IS NULL")->fetchAll(PDO::FETCH_ASSOC), 'task_id') : [];
 function planner_task_url($id) { return 'https://planner.cloud.microsoft/webui/plan/WLjIX4pJX0aot3QF96N06MkADMal/view/board/task/' . rawurlencode($id) . '?tid=a18de7ab-5b49-41ac-8831-357e9b0d5817'; }
 const PLANNER_URL = 'https://planner.cloud.microsoft/webui/plan/WLjIX4pJX0aot3QF96N06MkADMal/view/board?tid=a18de7ab-5b49-41ac-8831-357e9b0d5817';
+$slApply = sl_db()->query('SELECT * FROM apply ORDER BY (decision IS NULL) DESC, id DESC LIMIT 30')->fetchAll(PDO::FETCH_ASSOC);
+$slUsers = sl_db()->query('SELECT * FROM users ORDER BY added_at')->fetchAll(PDO::FETCH_ASSOC);
+$slPending = array_filter($slApply, fn($r) => empty($r['decision']));
 $meets = [];
 if (is_file(STATE_DIR . '/meet.sqlite')) { $s = ensure_cols('meet.sqlite', 'meet', FOLLOW)->prepare('SELECT * FROM meet WHERE start >= ? ORDER BY start LIMIT 30'); $s->execute([date('c', strtotime('today'))]); $meets = $s->fetchAll(PDO::FETCH_ASSOC); }
 $wd = ['日', '一', '二', '三', '四', '五', '六'];
@@ -303,6 +341,7 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
     <a href="#repair" class="<?= count(array_filter($openRep, fn($r) => $r['status'] === 'new')) ? 'hot' : '' ?>"><b><?= count(array_filter($openRep, fn($r) => $r['status'] === 'new')) ?></b><span>報修待處理</span></a>
     <a href="#repair"><b><?= count(array_filter($openRep, fn($r) => $r['status'] === 'doing')) ?></b><span>報修處理中</span></a>
     <a href="#cafe"><b><?= count($cafePending) ?></b><span>咖啡廳待加入</span></a>
+    <a href="#shortlink" class="<?= $slPending ? 'hot' : '' ?>"><b><?= count($slPending) ?></b><span>縮址待核准</span></a>
     <a href="#meet"><b><?= count($meets) ?></b><span>主任有約（今天起）</span></a>
   </div>
 
@@ -454,6 +493,41 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
         <?php endif; ?>
       </div>
     <?php endforeach; ?>
+  </div>
+
+  <div class="box" id="shortlink">
+    <div class="sec"><h2>🔗 縮址後台權限</h2><small>主任核准後一小時內開通（加進 M365 登入名單）並寄信通知；移除也一樣一小時內生效</small></div>
+    <?php if (!$slApply): ?><p class="empty">目前沒有申請。</p><?php endif; ?>
+    <?php foreach ($slApply as $r): ?>
+      <div class="item">
+        <div class="row"><span class="ttl"><?= h($r['name']) ?></span><span class="meta" style="margin:0">（<?= h($r['dept']) ?>）<?= h($r['email']) ?>｜<?= h(ago($r['created_at'])) ?></span></div>
+        <p class="desc"><b>用途</b>：<?= h($r['purpose']) ?></p>
+        <?php if (!empty($r['decision'])): ?>
+          <div class="meta"><span class="tag <?= $r['decision'] === 'approve' ? 'done' : 'high' ?>"><?= h(AID[$r['decision']] ?? $r['decision']) ?></span>
+            <?= h($r['decided_by']) ?>｜<?= h(ago($r['decided_at'])) ?><?= ($r['decision_note'] ?? '') !== '' ? '｜意見：' . h($r['decision_note']) : '' ?>
+            ｜<?= empty($r['decision_notified_at']) ? '通知待寄' : '已通知申請人' ?></div>
+        <?php elseif ($email === AI_APPROVER): ?>
+        <form method="post" class="act">
+          <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="sl"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+          <input type="text" name="note" maxlength="500" placeholder="意見（選填，會寫進給申請人的通知信）">
+          <button class="ok" name="decision" value="approve">核准</button>
+          <button name="decision" value="reject" onclick="return confirm('確定不核准？')">不核准</button>
+        </form>
+        <?php else: ?>
+          <div class="meta"><span class="tag new">待主任核准</span></div>
+        <?php endif; ?>
+      </div>
+    <?php endforeach; ?>
+    <details style="margin-top:10px"><summary>目前有權限的帳號（<?= count($slUsers) ?>）</summary>
+      <?php foreach ($slUsers as $u): ?>
+        <form method="post" class="act plrow">
+          <input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="act" value="sl"><input type="hidden" name="user" value="<?= h($u['email']) ?>">
+          <span class="pltitle"><?= h($u['name'] ?: $u['email']) ?></span>
+          <span class="meta" style="margin:0"><?= h($u['email']) ?>｜<?= $u['synced_at'] ? '已開通' : '開通中' ?></span>
+          <?php if ($email === AI_APPROVER && $u['email'] !== AI_APPROVER): ?><button name="decision" value="remove" onclick="return confirm('移除這個帳號的短網址後台權限？')">移除</button><?php endif; ?>
+        </form>
+      <?php endforeach; ?>
+    </details>
   </div>
 
   <div class="box" id="cafe">

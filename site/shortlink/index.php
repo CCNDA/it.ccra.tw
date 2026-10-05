@@ -1,0 +1,126 @@
+<?php
+// 縮址（ccra.tw 短網址）入口。
+// 熊哥 2026-10-05：「申請要多一個縮址 然後有帳號可以進入直接設定短網址 沒有帳號的可以申請開通設定短網址」。
+// 有權限的人直接轉到 ccra.tw/sso/（Cloudflare Access＋M365 登入進後台）；沒有的在這裡申請，主任在戰情室核准。
+// 名單唯一來源是本機 shortlink.sqlite 的 users 表；IT大蘇本機 shortlink_sync.py 每小時把它同步到
+// Cloudflare Access 政策與 ccra.tw 的 YOURLS（這台沒有那兩邊的權限，所以核准後最多等一小時生效）。
+require '/var/www/it-lib/access.php';
+$id = access_identity();
+$email = strtolower($id['email']);
+$who = (json_decode((string)@file_get_contents(STATE_DIR . '/dept_map.json'), true) ?: [])[$email] ?? ['name' => '', 'dept' => ''];
+const SSO_URL = 'https://ccra.tw/sso/';
+
+$db = new PDO('sqlite:' . STATE_DIR . '/shortlink.sqlite');
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$db->exec('CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT, added_at TEXT, added_by TEXT, synced_at TEXT)');
+$db->exec('CREATE TABLE IF NOT EXISTS apply (id INTEGER PRIMARY KEY, created_at TEXT, email TEXT, name TEXT, dept TEXT, purpose TEXT, notified_at TEXT,
+  planner_task_id TEXT, decision TEXT, decision_note TEXT, decided_by TEXT, decided_at TEXT, decision_notified_at TEXT)');
+
+$st = $db->prepare('SELECT synced_at FROM users WHERE email = ?');
+$st->execute([$email]);
+$user = $st->fetch(PDO::FETCH_ASSOC);
+// 已開通而且已同步到 Cloudflare／YOURLS 才轉過去；剛核准還沒同步的先顯示「開通中」，免得轉過去被擋
+if ($user && $user['synced_at']) { header('Location: ' . SSO_URL, true, 302); exit; }
+
+$secret = trim((string)@file_get_contents(STATE_DIR . '/form_secret'));
+$csrf = hash_hmac('sha256', 'shortlink' . $email . date('Y-m-d'), $secret);
+function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
+$err = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$user) {
+    $name = trim($_POST['name'] ?? '');
+    $purpose = trim($_POST['purpose'] ?? '');
+    if (!hash_equals($csrf, $_POST['csrf'] ?? '')) $err = '頁面已過期，請重新整理後再送出。';
+    elseif ($name === '' || mb_strlen($name) > 50) $err = '請填寫姓名。';
+    elseif ($purpose === '') $err = '請寫一下要用短網址做什麼。';
+    else {
+        // 同一人只留一張待審的申請；被婉拒後可以再申請
+        $st = $db->prepare('SELECT COUNT(*) FROM apply WHERE email = ? AND decision IS NULL');
+        $st->execute([$email]);
+        if (!$st->fetchColumn()) {
+            $db->prepare('INSERT INTO apply (created_at,email,name,dept,purpose) VALUES (?,?,?,?,?)')
+               ->execute([date('c'), $email, $name, $who['dept'], mb_substr($purpose, 0, 500)]);
+        }
+        header('Location: ./?sent=1', true, 303);
+        exit;
+    }
+}
+$st = $db->prepare('SELECT * FROM apply WHERE email = ? ORDER BY id DESC LIMIT 1');
+$st->execute([$email]);
+$last = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+$pending = $last && $last['decision'] === null;
+$rejected = $last && $last['decision'] === 'reject' && !isset($_GET['again']);
+?>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>縮址｜CCRA 資訊服務</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#109a4b">
+<meta name="apple-mobile-web-app-title" content="資訊服務">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css?v=dev">
+<link rel="stylesheet" href="/assets/form.css?v=dev">
+<script src="/assets/whoami.js?v=dev" defer></script>
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none"><img class="mark" src="/img/logo.png" alt="CCRA 資訊服務首頁">
+  <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
+  <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
+  <span class="sep" aria-hidden="true"></span>
+  <div class="title">縮址<small>ccra.tw Short Links</small></div>
+</div></header>
+<main class="wrap">
+  <div class="hero">
+    <div class="pic">🔗</div>
+    <div><h1><?= h($who['name'] !== '' ? preg_replace('/^\d{3}-/', '', $who['name']) . '，' : '') ?>平安！要做短網址嗎？</h1>
+    <p>協會自己的短網址 ccra.tw：把很長的連結變成 ccra.tw/xxx，好記、好印在文宣上，還看得到點擊次數。</p></div>
+  </div>
+<?php if ($user): ?>
+  <div class="box yay">
+    <div class="big">⏳</div>
+    <h2>已經開通，正在設定中</h2>
+    <p>一小時內就能用。之後點首頁的「縮址」會直接進入短網址後台，用你的 M365 帳號登入。</p>
+    <p><a class="btn ghost" href="/">回首頁</a></p>
+  </div>
+<?php elseif ($pending || isset($_GET['sent'])): ?>
+  <div class="box yay">
+    <div class="big">🔗</div>
+    <h2>收到你的申請了！</h2>
+    <p><?= $last ? '申請日期 ' . h(substr($last['created_at'], 0, 10)) . '。' : '' ?>資訊部主任核准後會寄信通知你。</p>
+    <p class="hint">開通後，點首頁的「縮址」就會直接進入短網址後台。</p>
+    <p><a class="btn ghost" href="/">回首頁</a></p>
+  </div>
+<?php elseif ($rejected): ?>
+  <div class="box">
+    <p class="step"><b>!</b>上次的申請未核准</p>
+    <p><?= h(substr($last['decided_at'] ?? '', 0, 10)) ?><?= ($last['decision_note'] ?? '') !== '' ? '，主任意見：' . h($last['decision_note']) : '' ?></p>
+    <p class="hint">需要的話可以補充用途再申請一次，或直接請資訊部幫你做一個短網址。</p>
+    <p><a class="btn ghost" href="./?again=1">重新申請</a> <a class="btn ghost" href="/">回首頁</a></p>
+  </div>
+<?php else: ?>
+  <form method="post">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <div class="box">
+      <p class="step"><b>1</b>申請開通短網址後台</p>
+      <p class="hint" style="margin-top:0">你的帳號還沒有短網址後台的權限。送出申請，資訊部主任核准後就能自己建立、修改短網址。</p>
+      <?php if ($err): ?><p class="err"><?= h($err) ?></p><?php endif; ?>
+      <label class="q" for="name">姓名</label>
+      <input type="text" id="name" name="name" maxlength="50" required value="<?= h($_POST['name'] ?? $who['name']) ?>">
+      <label class="q">登入帳號</label>
+      <p style="margin:0;color:var(--ink-2)"><?= h($email) ?></p>
+      <label class="q" for="purpose">要用短網址做什麼？</label>
+      <textarea id="purpose" name="purpose" maxlength="500" required placeholder="例：活動文宣、捐款頁、問卷連結"><?= h($_POST['purpose'] ?? '') ?></textarea>
+      <button class="go" type="submit">送出申請 →</button>
+    </div>
+  </form>
+<?php endif; ?>
+</main>
+</body>
+</html>
