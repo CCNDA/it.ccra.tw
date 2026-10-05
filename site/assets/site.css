@@ -37,6 +37,11 @@ body{
 a{color:inherit}
 :focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:10px}
 .wrap{max-width:960px;margin:0 auto;padding:0 16px}
+/* 首頁加寬（熊哥 10-05：「左右可以讓版型滿一點」）；表單頁維持 960 好閱讀 */
+.home .wrap{max-width:1240px}
+/* 右側互動大蘇出現時（≥1360px）兩側各留 170px 給它，內容最寬仍是 1240 */
+@media (min-width:1360px){.home .wrap{max-width:min(1240px,calc(100vw - 340px))}
+  .home .itsu-say{width:max(140px,min(230px,calc((100vw - min(1240px,100vw - 340px))/2 - 40px)))}}
 
 /* ── 頁首：Logo、字標、頁名整合成一列（熊哥 10-03：不要一直往下拉） ── */
 .bar{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--paper) 82%,transparent);

@@ -250,8 +250,9 @@ function barcls($v) { return $v === null ? '' : ($v >= 90 ? 'hi' : ($v >= 75 ? '
 <script src="/assets/live.js?v=dev" defer></script>
 <style>
   .autoref{margin:-4px 0 10px;font-size:12.5px;color:var(--muted);text-align:right}
-.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
-@media (max-width:720px){.kpi{grid-template-columns:repeat(2,1fr)}}
+/* 數字卡排成一排，有幾張就分幾欄（熊哥 10-05：「可以變成一排」） */
+.kpi{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;margin-top:18px}
+@media (max-width:720px){.kpi{grid-auto-flow:row;grid-template-columns:repeat(2,1fr)}}
 .kpi a{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--edge);border-radius:18px;padding:14px 16px;box-shadow:var(--glow)}
 .kpi b{display:block;font-size:30px;font-weight:900;line-height:1.1}
 .kpi span{color:var(--muted);font-size:13.5px}
