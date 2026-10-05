@@ -56,7 +56,7 @@ $rejected = $last && $last['decision'] === 'reject' && !isset($_GET['again']);
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>縮址｜CCRA 資訊服務</title>
+<title><?= h($user ? 'CCRA 縮址服務｜開通中' : (($pending || isset($_GET['sent'])) ? 'CCRA 縮址服務｜申請已送出' : 'CCRA 縮址服務｜申請開通')) ?></title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
@@ -74,7 +74,7 @@ $rejected = $last && $last['decision'] === 'reject' && !isset($_GET['again']);
   <img class="word word-light" src="/img/textlogo_black.png" alt="中華基督教救助協會">
   <img class="word word-dark" src="/img/textlogo_white.png" alt="中華基督教救助協會"></a>
   <span class="sep" aria-hidden="true"></span>
-  <div class="title">縮址<small>ccra.tw Short Links</small></div>
+  <div class="title">CCRA 縮址服務<small><?= h($user ? '開通中' : (($pending || isset($_GET['sent'])) ? '申請已送出' : '申請開通')) ?></small></div>
 </div></header>
 <main class="wrap">
   <div class="hero">
@@ -86,7 +86,7 @@ $rejected = $last && $last['decision'] === 'reject' && !isset($_GET['again']);
   <div class="box yay">
     <div class="big">⏳</div>
     <h2>已經開通，正在設定中</h2>
-    <p>一小時內就能用。之後點首頁的「縮址」會直接進入短網址後台，用你的 M365 帳號登入。</p>
+    <p>一小時內就能用。之後點首頁的「CCRA 縮址服務」會直接進入後台，用你的 M365 帳號登入。</p>
     <p><a class="btn ghost" href="/">回首頁</a></p>
   </div>
 <?php elseif ($pending || isset($_GET['sent'])): ?>
@@ -94,7 +94,7 @@ $rejected = $last && $last['decision'] === 'reject' && !isset($_GET['again']);
     <div class="big">🔗</div>
     <h2>收到你的申請了！</h2>
     <p><?= $last ? '申請日期 ' . h(substr($last['created_at'], 0, 10)) . '。' : '' ?>資訊部主任核准後會寄信通知你。</p>
-    <p class="hint">開通後，點首頁的「縮址」就會直接進入短網址後台。</p>
+    <p class="hint">開通後，點首頁的「CCRA 縮址服務」就會直接進入後台。</p>
     <p><a class="btn ghost" href="/">回首頁</a></p>
   </div>
 <?php elseif ($rejected): ?>
@@ -108,8 +108,8 @@ $rejected = $last && $last['decision'] === 'reject' && !isset($_GET['again']);
   <form method="post">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
     <div class="box">
-      <p class="step"><b>1</b>申請開通短網址後台</p>
-      <p class="hint" style="margin-top:0">你的帳號還沒有短網址後台的權限。送出申請，資訊部主任核准後就能自己建立、修改短網址。</p>
+      <p class="step"><b>1</b>申請開通 CCRA 縮址服務</p>
+      <p class="hint" style="margin-top:0">你的帳號還沒有 CCRA 縮址服務的權限。送出申請，資訊部主任核准後就能自己建立、修改短網址。</p>
       <?php if ($err): ?><p class="err"><?= h($err) ?></p><?php endif; ?>
       <label class="q" for="name">姓名</label>
       <input type="text" id="name" name="name" maxlength="50" required value="<?= h($_POST['name'] ?? $who['name']) ?>">

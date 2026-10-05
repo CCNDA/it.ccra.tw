@@ -502,7 +502,7 @@ table.srv a{color:var(--ink);font-weight:800;text-decoration:none} table.srv a:h
   </div>
 
   <div class="box" id="shortlink">
-    <div class="sec"><h2>🔗 縮址後台權限</h2><small>主任核准後一小時內開通（加進 M365 登入名單）並寄信通知；移除也一樣一小時內生效</small></div>
+    <div class="sec"><h2>🔗 CCRA 縮址服務權限</h2><small>主任核准後一小時內開通（加進 M365 登入名單）並寄信通知；移除也一樣一小時內生效</small></div>
     <?php if (!$slApply): ?><p class="empty">目前沒有申請。</p><?php endif; ?>
     <?php foreach ($slApply as $r): ?>
       <div class="item">
