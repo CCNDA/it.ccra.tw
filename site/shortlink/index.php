@@ -110,7 +110,7 @@ $rejected = $last && $last['decision'] === 'reject' && !isset($_GET['again']);
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
     <div class="box">
       <p class="step"><b>1</b>申請開通 CCRA 縮址服務</p>
-      <p class="hint" style="margin-top:0">你的帳號還沒有 CCRA 縮址服務的權限。送出申請，資訊部主任核准後就能自己建立、修改短網址。</p>
+      <p class="hint" style="margin-top:0">你的帳號還沒有 CCRA 縮址服務的權限。送出申請後會同時知會你的部門主管，資訊部主任核准後就能自己建立、修改短網址。</p>
       <?php if ($err): ?><p class="err"><?= h($err) ?></p><?php endif; ?>
       <?php if ($who['name'] !== ''): ?>
       <label class="q">申請人（M365 帳號帶入）</label>
