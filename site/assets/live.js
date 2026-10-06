@@ -62,6 +62,7 @@
   function fly(d) {
     if (reduce || !layer) return;
     var b = el('div', 'dm');
+    b.setAttribute('data-id', d.id);
     b.appendChild(el('b', null, short(d.name) + '：'));
     b.appendChild(document.createTextNode(d.text));
     if (FULL) {   // 全區：分 8 道錯開，不必排隊
@@ -138,9 +139,12 @@
   // 輪播：單行模式等跑道空了才放下一則；全頁模式每 3 秒一則。分頁在背景、或設定減少動態時不放
   setInterval(function () {
     if (reduce || !layer || document.hidden || !pool.length) return;
-    if (!FULL && Date.now() / 1000 < nextAt) return;
+    // 輪播要讀得到：單行一次只跑一則（前一則走完才放下一則），全頁最多 8 則；同一則還在畫面上就跳過
+    if (!FULL && (layer.childElementCount || Date.now() / 1000 < nextAt)) return;
     if (FULL && layer.childElementCount >= 8) return;
-    fly(pool[rot++ % pool.length]);
+    var d = pool[rot++ % pool.length];
+    if (layer.querySelector('[data-id="' + d.id + '"]')) return;
+    fly(d);
   }, FULL ? 3000 : 1000);
   function poll() {
     clearTimeout(timer);
