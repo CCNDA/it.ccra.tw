@@ -1,5 +1,5 @@
 // 首頁「誰在線上」與彈幕（熊哥 2026-10-05）。資料來自 /live/api.php，伺服器端說明見該檔。
-// 前景每 10 秒、背景每 60 秒回報一次；彈幕循環播放到被刪除為止（熊哥 10-06：「需要能循環到下架」），本人與資訊部可刪。
+// 前景每 10 秒、背景每 60 秒回報一次；彈幕留 10 分鐘，這段時間內循環播放（熊哥 10-06：「需要能循環到下架」「10分鐘下架啊」），本人與資訊部可提早刪。
 // 新的一則先立刻飛一次（seen 記在 sessionStorage），之後與其他彈幕一起輪播；分頁在背景時不輪播。
 // 🔴 彈幕只在頁首那條脈動線上單行跑，填寫與清單放頁尾（熊哥 10-05：「娛樂互動不能干擾主要任務」
 //    「彈幕的文字可放在最上面那條脈動上跑…但填寫放下面沒有問題」）。
@@ -20,7 +20,7 @@
     '<div class="live-head"><span class="live-dot" aria-hidden="true"></span><b class="live-n">…</b><span>人在線上</span></div>' +
     '<div class="live-people" aria-live="polite"></div>' +
     '<form class="live-say" autocomplete="off">' +
-    '<input name="text" maxlength="40" placeholder="發一則彈幕，會循環播放到刪除為止" aria-label="彈幕內容">' +
+    '<input name="text" maxlength="40" placeholder="發一則彈幕，循環播放 10 分鐘" aria-label="彈幕內容">' +
     '<button type="submit">送出</button>' +
     '<button type="button" class="live-toggle" aria-expanded="false">最近彈幕</button>' +
     '</form><p class="live-msg" role="status"></p><ul class="live-list" hidden></ul>';
@@ -114,7 +114,7 @@
       people.appendChild(c);
     });
     list.textContent = '';
-    if (!j.dm.length) list.appendChild(el('li', 'live-empty', '目前沒有彈幕'));
+    if (!j.dm.length) list.appendChild(el('li', 'live-empty', '最近 10 分鐘沒有彈幕'));
     pool = j.dm;
     j.dm.slice().reverse().forEach(function (d) {
       var li = el('li');
