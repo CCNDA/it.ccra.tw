@@ -1,5 +1,6 @@
 // 首頁「誰在線上」與彈幕（熊哥 2026-10-05）。資料來自 /live/api.php，伺服器端說明見該檔。
-// 前景每 10 秒、背景每 60 秒回報一次；彈幕 10 分鐘後消失，本人與資訊部可刪。
+// 前景每 10 秒、背景每 60 秒回報一次；彈幕循環播放到被刪除為止（熊哥 10-06：「需要能循環到下架」），本人與資訊部可刪。
+// 新的一則先立刻飛一次（seen 記在 sessionStorage），之後與其他彈幕一起輪播；分頁在背景時不輪播。
 // 🔴 彈幕只在頁首那條脈動線上單行跑，填寫與清單放頁尾（熊哥 10-05：「娛樂互動不能干擾主要任務」
 //    「彈幕的文字可放在最上面那條脈動上跑…但填寫放下面沒有問題」）。
 // 戰情室 #live 帶 data-full：彈幕改成全頁飄（熊哥 10-05：「戰情室應該也要有彈幕和線上 脈動也要有…彈幕可以全區呈現」）。
@@ -19,7 +20,7 @@
     '<div class="live-head"><span class="live-dot" aria-hidden="true"></span><b class="live-n">…</b><span>人在線上</span></div>' +
     '<div class="live-people" aria-live="polite"></div>' +
     '<form class="live-say" autocomplete="off">' +
-    '<input name="text" maxlength="40" placeholder="發一則彈幕，10 分鐘後消失" aria-label="彈幕內容">' +
+    '<input name="text" maxlength="40" placeholder="發一則彈幕，會循環播放到刪除為止" aria-label="彈幕內容">' +
     '<button type="submit">送出</button>' +
     '<button type="button" class="live-toggle" aria-expanded="false">最近彈幕</button>' +
     '</form><p class="live-msg" role="status"></p><ul class="live-list" hidden></ul>';
@@ -35,6 +36,7 @@
     wrap.appendChild(layer);
   }
   var nextAt = 0;   // 單行：下一則最早什麼時候可以出發，避免疊在一起
+  var pool = [], rot = 0;   // 輪播：目前所有彈幕、下一則輪到第幾則
   var people = box.querySelector('.live-people'), n = box.querySelector('.live-n'),
       form = box.querySelector('.live-say'), input = form.querySelector('input'),
       msg = box.querySelector('.live-msg'), list = box.querySelector('.live-list'),
@@ -111,7 +113,8 @@
       people.appendChild(c);
     });
     list.textContent = '';
-    if (!j.dm.length) list.appendChild(el('li', 'live-empty', '最近 10 分鐘沒有彈幕'));
+    if (!j.dm.length) list.appendChild(el('li', 'live-empty', '目前沒有彈幕'));
+    pool = j.dm;
     j.dm.slice().reverse().forEach(function (d) {
       var li = el('li');
       var t = new Date(d.at * 1000);
@@ -128,10 +131,17 @@
     });
     var fresh = j.dm.filter(function (d) { return !seen[d.id]; });
     fresh.forEach(function (d) { seen[d.id] = 1; fly(d); });
-    if (fresh.length) {   // 只留還在 10 分鐘內的，免得 sessionStorage 越積越多
+    if (fresh.length) {   // 只留還在播的，免得 sessionStorage 越積越多
       var keep = {}; j.dm.forEach(function (d) { if (seen[d.id]) keep[d.id] = 1; }); seen = keep; saveSeen();
     }
   }
+  // 輪播：單行模式等跑道空了才放下一則；全頁模式每 3 秒一則。分頁在背景、或設定減少動態時不放
+  setInterval(function () {
+    if (reduce || !layer || document.hidden || !pool.length) return;
+    if (!FULL && Date.now() / 1000 < nextAt) return;
+    if (FULL && layer.childElementCount >= 8) return;
+    fly(pool[rot++ % pool.length]);
+  }, FULL ? 3000 : 1000);
   function poll() {
     clearTimeout(timer);
     return fetch(API + '?a=poll', { credentials: 'same-origin', cache: 'no-store' })
