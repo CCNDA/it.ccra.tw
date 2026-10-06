@@ -119,6 +119,9 @@ footer{margin:40px 0 0;padding:28px 0 36px;border-top:1px solid var(--edge);text
 .motto{margin:0 auto;max-width:30em;font-weight:700;font-size:clamp(17px,2.6vw,21px);line-height:1.9;letter-spacing:.03em}
 .motto em{font-style:normal;background:linear-gradient(90deg,var(--red),var(--yellow),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent}
 .sign{margin:14px 0 0;color:var(--muted);font-size:13.5px}
+.ver{margin:8px 0 0;font-size:13px}
+.ver a{color:var(--muted);text-decoration:none;font-family:"IBM Plex Mono",ui-monospace,monospace}
+.ver a:hover{color:var(--ink);text-decoration:underline}
 
 @media (prefers-reduced-motion:reduce){
   .lifeline path{animation:none;stroke-dashoffset:0}
