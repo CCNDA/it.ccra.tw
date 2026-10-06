@@ -95,6 +95,7 @@ function ticket_no($r) { return 'R' . date('ymd', strtotime($r['created_at'])) .
 <link rel="stylesheet" href="/assets/site.css?v=dev">
 <link rel="stylesheet" href="/assets/form.css?v=dev">
 <script src="/assets/whoami.js?v=dev" defer></script>
+<script src="/assets/footer.js?v=dev" defer></script>
 <style>
 .errs{margin:0;padding-left:20px}
 .two{display:grid;grid-template-columns:1fr;gap:0 14px}

@@ -68,6 +68,7 @@ $rejected = $last && $last['decision'] === 'reject' && !isset($_GET['again']);
 <link rel="stylesheet" href="/assets/site.css?v=dev">
 <link rel="stylesheet" href="/assets/form.css?v=dev">
 <script src="/assets/whoami.js?v=dev" defer></script>
+<script src="/assets/footer.js?v=dev" defer></script>
 </head>
 <body>
 <header class="bar"><div class="wrap">

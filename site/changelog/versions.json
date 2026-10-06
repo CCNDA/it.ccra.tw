@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.1",
+    "date": "2026-10-06",
+    "kind": "小修",
+    "note": "測試中",
+    "items": [
+      "每一頁的最下方統一加上資訊部頁尾與版本號，點版本號可看升級紀錄",
+      "版本升級紀錄加上介紹影片連結"
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-10-06",
     "kind": "首版",
@@ -10,7 +20,19 @@
       "申請人由 M365 帳號帶入；AI 工具與縮址服務申請送出後同時知會部門主管",
       "網站監控：協會對外網站的即時狀態與可用率",
       "M365 快捷：Copilot、Outlook、Word、Excel、PowerPoint、OneDrive、OneNote、Planner",
-      "介紹影片：電腦版、手機版"
+      {
+        "text": "介紹影片",
+        "links": [
+          [
+            "電腦版",
+            "https://youtu.be/0mH6h4zX5E0"
+          ],
+          [
+            "手機版",
+            "https://youtu.be/J5msZk6IsDs"
+          ]
+        ]
+      }
     ]
   }
 ]

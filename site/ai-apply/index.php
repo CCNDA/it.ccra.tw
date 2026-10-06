@@ -81,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 .tools .pill em{font-style:normal;font-size:11.5px;font-weight:700;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--mist);color:var(--teal-d)}
 </style>
 <script src="/assets/whoami.js?v=dev" defer></script>
+<script src="/assets/footer.js?v=dev" defer></script>
 </head>
 <body>
 <!-- 版型與「與資訊部主任有約」統一（熊哥 10-04） -->

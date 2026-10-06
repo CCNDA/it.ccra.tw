@@ -1,7 +1,7 @@
 <?php
 // 版本升級紀錄（熊哥 2026-10-06：「網站要開始加上版本，目前算是1版，版本編號由你控管，小修大修生，升級服務，
 // 資訊站最下方要有一個版本升級記錄可以點選去看」）。
-// 唯一來源是同目錄的 versions.json（最新的放最前面）；首頁頁尾的版本號也是讀它，不要另外寫死一份。
+// 唯一來源是同目錄的 versions.json（最新的放最前面；項目可以是文字，或 {text, links:[[標籤,網址],…]}）；首頁頁尾的版本號也是讀它，不要另外寫死一份。
 // 版本號 X.Y.Z：X 升級服務（新增服務或服務方式改變）／Y 大修（既有服務的功能改版）／Z 小修（錯誤修正、文字、版面）。
 require '/var/www/it-lib/access.php';
 access_identity();
@@ -34,6 +34,7 @@ $vers = json_decode((string)@file_get_contents(__DIR__ . '/versions.json'), true
 .rel ul{margin:10px 0 0;padding-left:1.3em;line-height:1.8}
 </style>
 <script src="/assets/whoami.js?v=dev" defer></script>
+<script src="/assets/footer.js?v=dev" defer></script>
 </head>
 <body>
 <header class="bar"><div class="wrap">
@@ -52,7 +53,7 @@ $vers = json_decode((string)@file_get_contents(__DIR__ . '/versions.json'), true
       <?php if (!empty($v['kind'])): ?><span class="tag"><?= h($v['kind']) ?></span><?php endif; ?>
       <?php if (!empty($v['note'])): ?><span class="tag test"><?= h($v['note']) ?></span><?php endif; ?>
       <span class="meta"><?= h($v['date']) ?></span></h2>
-    <ul><?php foreach ($v['items'] ?? [] as $it): ?><li><?= h($it) ?></li><?php endforeach; ?></ul>
+    <ul><?php foreach ($v['items'] ?? [] as $it): ?><li><?php if (is_array($it)): ?><?= h($it['text'] ?? '') ?>：<?php foreach ($it['links'] ?? [] as $i => [$lab, $url]): ?><?= $i ? '、' : '' ?><a href="<?= h($url) ?>" target="_blank" rel="noopener"><?= h($lab) ?></a><?php endforeach; ?><?php else: ?><?= h($it) ?><?php endif; ?></li><?php endforeach; ?></ul>
   </section>
 <?php endforeach; ?>
   <p><a class="btn ghost" href="/">回首頁</a></p>

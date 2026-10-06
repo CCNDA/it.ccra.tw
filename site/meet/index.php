@@ -166,6 +166,7 @@ foreach ($slots ?? [] as $k => $days) foreach ($days as $d => $list) $data[$k][$
 @media (prefers-reduced-motion:reduce){.bear-btn img,.bear-btn.hop img{animation:none}}
 </style>
 <script src="/assets/whoami.js?v=dev" defer></script>
+<script src="/assets/footer.js?v=dev" defer></script>
 </head>
 <body>
 <header class="bar"><div class="wrap">

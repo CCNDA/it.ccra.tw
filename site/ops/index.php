@@ -252,6 +252,7 @@ function barcls($v) { return $v === null ? '' : ($v >= 90 ? 'hi' : ($v >= 75 ? '
 <link rel="stylesheet" href="/assets/site.css?v=dev">
 <link rel="stylesheet" href="/assets/form.css?v=dev">
 <script src="/assets/whoami.js?v=dev" defer></script>
+<script src="/assets/footer.js?v=dev" defer></script>
 <script src="/assets/live.js?v=dev" defer></script>
 <style>
   .autoref{margin:-4px 0 10px;font-size:12.5px;color:var(--muted);text-align:right}
