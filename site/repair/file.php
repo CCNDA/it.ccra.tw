@@ -6,7 +6,7 @@ $email = strtolower($id['email']);
 require '/var/www/it-lib/itstaff.php';
 $fn = basename((string)($_GET['f'] ?? ''));
 if (!preg_match('/^(\d+)-[1-3]\.(jpg|png|gif|webp)$/', $fn, $m)) { http_response_code(404); exit; }
-$db = new PDO('sqlite:' . STATE_DIR . '/repair.sqlite');
+$db = itdb('repair');
 $st = $db->prepare('SELECT email, files FROM repair WHERE id = ?');
 $st->execute([(int)$m[1]]);
 $r = $st->fetch(PDO::FETCH_ASSOC);

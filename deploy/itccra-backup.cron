@@ -1,0 +1,4 @@
+# it.ccra.tw 資料庫每日備份（熊哥 2026-10-06 改 PostgreSQL 時一併補上；之前 SQLite 時期沒有任何備份）
+# 安裝：sudo install -m 644 deploy/itccra-backup.cron /etc/cron.d/itccra-backup
+# 每天 02:17 pg_dump 自訂格式到 /var/backups/itccra，保留 30 天
+17 2 * * * postgres mkdir -p /var/backups/itccra && pg_dump -Fc itccra > /var/backups/itccra/itccra-$(date +\%Y\%m\%d).dump && find /var/backups/itccra -name 'itccra-*.dump' -mtime +30 -delete

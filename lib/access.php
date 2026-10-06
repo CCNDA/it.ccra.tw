@@ -46,3 +46,5 @@ function access_identity() {
     if (empty($c['email'])) access_deny('no email');
     return $c;
 }
+
+require_once __DIR__ . '/db.php';   // itdb()：PostgreSQL 連線（2026-10-06 由 SQLite 改）
