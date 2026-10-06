@@ -28,7 +28,8 @@ function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
 $err = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$user) {
-    $name = trim($_POST['name'] ?? '');
+    // 熊哥 2026-10-06：「帶入了 M365 為什麼要打名字」——通訊錄查得到就直接用，查不到（新進同工）才請他填
+    $name = $who['name'] !== '' ? $who['name'] : trim($_POST['name'] ?? '');
     $purpose = trim($_POST['purpose'] ?? '');
     if (!hash_equals($csrf, $_POST['csrf'] ?? '')) $err = '頁面已過期，請重新整理後再送出。';
     elseif ($name === '' || mb_strlen($name) > 50) $err = '請填寫姓名。';
@@ -111,10 +112,16 @@ $rejected = $last && $last['decision'] === 'reject' && !isset($_GET['again']);
       <p class="step"><b>1</b>申請開通 CCRA 縮址服務</p>
       <p class="hint" style="margin-top:0">你的帳號還沒有 CCRA 縮址服務的權限。送出申請，資訊部主任核准後就能自己建立、修改短網址。</p>
       <?php if ($err): ?><p class="err"><?= h($err) ?></p><?php endif; ?>
+      <?php if ($who['name'] !== ''): ?>
+      <label class="q">申請人（M365 帳號帶入）</label>
+      <p style="margin:0"><b><?= h(preg_replace('/^\d{3}-/', '', $who['name'])) ?></b><?= $who['dept'] !== '' ? '｜' . h($who['dept']) : '' ?></p>
+      <p style="margin:2px 0 0;color:var(--ink-2)"><?= h($email) ?></p>
+      <?php else: ?>
       <label class="q" for="name">姓名</label>
-      <input type="text" id="name" name="name" maxlength="50" required value="<?= h($_POST['name'] ?? $who['name']) ?>">
+      <input type="text" id="name" name="name" maxlength="50" required value="<?= h($_POST['name'] ?? '') ?>">
       <label class="q">登入帳號</label>
       <p style="margin:0;color:var(--ink-2)"><?= h($email) ?></p>
+      <?php endif; ?>
       <label class="q" for="purpose">要用短網址做什麼？</label>
       <textarea id="purpose" name="purpose" maxlength="500" required placeholder="例：活動文宣、捐款頁、問卷連結"><?= h($_POST['purpose'] ?? '') ?></textarea>
       <button class="go" type="submit">送出申請 →</button>
