@@ -31,3 +31,5 @@ textarea{min-height:80px}
 .yay{text-align:center;padding:26px 18px}
 .yay .big{font-size:46px;animation:bob 2s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.hero .pic,.yay .big{animation:none}}
+.hero .queue{display:inline-block;margin:6px 0 0;padding:3px 12px;border-radius:999px;font-size:13.5px;background:color-mix(in srgb,var(--green) 12%,transparent);color:var(--ink-2)}
+.hero .queue b{color:var(--ink)}

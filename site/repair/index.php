@@ -12,6 +12,9 @@ if ($who['dept'] !== '' && !in_array($who['dept'], $DEPTS, true)) array_splice($
 const CATS = ['電腦／筆電', '網路／Wi-Fi', '印表機／影印機', '帳號／密碼／登入', 'Email／Outlook', 'Teams／M365', '軟體安裝／授權', '其他'];
 const URGENCY = ['low' => ['不急，有空再處理', '🌿'], 'mid' => ['影響工作，請盡快', '⏰'], 'high' => ['完全無法工作', '🚨']];
 const STATUS = ['new' => '已送出', 'doing' => '處理中', 'done' => '已完成'];
+// 回應時限：熊哥 2026-10-06 於 Planner 裁示「就按照阿吉的回覆處理」。阿吉原話：「基本上給4小時，我看到再依它的問題來處理優先次序，
+// 就跟急診傷病分級處理的概念」，且「系統得顯示目前排隊的資料」。所以急迫程度只供參考，排序由資訊部決定。
+const RESPONSE_HOURS = 4;
 const MAX_FILES = 3, MAX_BYTES = 5 * 1024 * 1024;
 $FILES_DIR = STATE_DIR . '/repair_files';
 
@@ -74,6 +77,9 @@ if (isset($_GET['ok'])) {
     $st->execute([(int)$_GET['ok'], $email]);
     $done = $st->fetch(PDO::FETCH_ASSOC) ?: null;
 }
+// 排隊件數（全部人的，不含內容）：讓同工看得到前面還有幾件
+$queue = ['new' => 0, 'doing' => 0];
+foreach ($db->query("SELECT status, COUNT(*) c FROM repair WHERE status IN ('new','doing') GROUP BY status") as $r) $queue[$r['status']] = (int)$r['c'];
 $st = $db->prepare('SELECT id, created_at, category, summary, urgency, status, note FROM repair WHERE email = ? ORDER BY id DESC LIMIT 10');
 $st->execute([$email]);
 $mine = $st->fetchAll(PDO::FETCH_ASSOC);
@@ -128,14 +134,15 @@ function ticket_no($r) { return 'R' . date('ymd', strtotime($r['created_at'])) .
 <main class="wrap">
   <div class="hero">
     <div class="pic"><img src="/img/itsu-avatar.webp" alt=""></div>
-    <div><h1><?= h($v['name'] !== '' ? preg_replace('/^\d{3}-/', '', $v['name']) . '，' : '') ?>平安！哪裡出狀況了？</h1><p>寫下發生什麼事、附張截圖，資訊部收到就會跟你聯絡。</p></div>
+    <div><h1><?= h($v['name'] !== '' ? preg_replace('/^\d{3}-/', '', $v['name']) . '，' : '') ?>平安！哪裡出狀況了？</h1><p>寫下發生什麼事、附張截圖，資訊部會在 <b><?= RESPONSE_HOURS ?> 小時內</b>回應你，再依問題輕重安排處理順序。</p>
+    <p class="queue">目前排隊中：<b><?= $queue['new'] ?></b> 件待處理、<b><?= $queue['doing'] ?></b> 件處理中</p></div>
   </div>
 <?php if ($done): ?>
   <div class="box yay">
     <div class="big">🛠️</div>
     <h2>報修已送出</h2>
     <p>單號 <b style="font-family:'IBM Plex Mono',monospace"><?= h(ticket_no($done)) ?></b>｜<?= h($done['category']) ?>｜<?= h(URGENCY[$done['urgency']][0]) ?></p>
-    <p class="hint">資訊部會盡快跟你聯絡，確認信會寄到 <?= h($email) ?>。處理進度可以回這一頁查看。</p>
+    <p class="hint">資訊部會在 <?= RESPONSE_HOURS ?> 小時內回應你，確認信會寄到 <?= h($email) ?>。處理進度可以回這一頁查看。</p>
     <p><a class="btn ghost" href="./">再報修一件</a> <a class="btn ghost" href="/">回首頁</a></p>
   </div>
 <?php else: ?>
@@ -160,6 +167,7 @@ function ticket_no($r) { return 'R' . date('ymd', strtotime($r['created_at'])) .
     </div>
     <div class="box">
       <p class="step"><b>2</b>有多急？</p>
+      <p class="hint" style="margin:0 0 8px">供資訊部參考。實際處理順序由資訊部依問題輕重安排，就像急診分級：每一件都會在 <?= RESPONSE_HOURS ?> 小時內回應。</p>
       <div class="pills">
         <?php foreach (URGENCY as $k => [$lab, $ico]): ?>
           <label class="pill"><input type="radio" name="urgency" value="<?= $k ?>"<?= $v['urgency'] === $k ? ' checked' : '' ?>><span><?= $ico ?> <?= h($lab) ?></span></label>
