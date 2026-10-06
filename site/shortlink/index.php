@@ -94,7 +94,7 @@ $rejected = $last && $last['decision'] === 'reject' && !isset($_GET['again']);
   <div class="box yay">
     <div class="big">🔗</div>
     <h2>收到你的申請了！</h2>
-    <p><?= $last ? '申請日期 ' . h(substr($last['created_at'], 0, 10)) . '。' : '' ?>資訊部主任核准後會寄信通知你。</p>
+    <p><?= $last ? '申請日期 ' . h(substr($last['created_at'], 0, 10)) . '。' : '' ?>已同時知會你的部門主管，資訊部主任核准後會寄信通知你。</p>
     <p class="hint">開通後，點首頁的「CCRA 縮址服務」就會直接進入後台。</p>
     <p><a class="btn ghost" href="/">回首頁</a></p>
   </div>
