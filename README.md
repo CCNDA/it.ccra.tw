@@ -34,7 +34,7 @@
 
 ```bash
 sudo apt-get install -y nginx php-fpm php-sqlite3 rsync git
-# 程式庫為私有（2026-10-09 起在 ccra-tw 組織），主機用唯讀部署金鑰拉取：
+# 程式庫在 ccra-tw 組織（2026-10-09 起；目前公開），主機用唯讀部署金鑰拉取（改回私有也不受影響）：
 sudo ssh-keygen -t ed25519 -N "" -f /root/.ssh/it_ccra_deploy   # 公鑰加到 repo Settings → Deploy keys（唯讀）
 sudo sh -c 'ssh-keyscan -t ed25519 github.com >> /root/.ssh/known_hosts'
 sudo git -c core.sshCommand="ssh -i /root/.ssh/it_ccra_deploy -o IdentitiesOnly=yes" clone git@github.com:ccra-tw/it.ccra.tw.git /opt/it.ccra.tw
