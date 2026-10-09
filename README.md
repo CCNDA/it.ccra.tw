@@ -28,13 +28,17 @@
 
 `main` 分支是正式版。主機每 2 分鐘檢查一次（`it-ccra-deploy.timer`），有新提交就執行 `deploy/deploy.sh`：同步 `site/`、`lib/`，nginx 設定有變才重新載入。
 
-採「主機自己拉」而不是 GitHub Actions 推：主機在內網沒有對外入口，而公開程式庫不宜掛 self-hosted runner。
+採「主機自己拉」而不是 GitHub Actions 推：主機在內網沒有對外入口，也不掛 self-hosted runner。
 
 ## 首次安裝（Ubuntu + nginx + PHP-FPM）
 
 ```bash
 sudo apt-get install -y nginx php-fpm php-sqlite3 rsync git
-sudo git clone https://github.com/CCNDA/it.ccra.tw.git /opt/it.ccra.tw
+# 程式庫為私有（2026-10-09 起在 ccra-tw 組織），主機用唯讀部署金鑰拉取：
+sudo ssh-keygen -t ed25519 -N "" -f /root/.ssh/it_ccra_deploy   # 公鑰加到 repo Settings → Deploy keys（唯讀）
+sudo sh -c 'ssh-keyscan -t ed25519 github.com >> /root/.ssh/known_hosts'
+sudo git -c core.sshCommand="ssh -i /root/.ssh/it_ccra_deploy -o IdentitiesOnly=yes" clone git@github.com:ccra-tw/it.ccra.tw.git /opt/it.ccra.tw
+sudo git -C /opt/it.ccra.tw config core.sshCommand "ssh -i /root/.ssh/it_ccra_deploy -o IdentitiesOnly=yes"
 sudo install -d /var/www/it.ccra.tw /var/www/it-lib
 sudo install -d -m 750 -o www-data -g www-data /var/lib/it-ccra
 sudo ln -s /etc/nginx/sites-available/it.ccra.tw /etc/nginx/sites-enabled/
